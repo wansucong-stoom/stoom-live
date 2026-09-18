@@ -1,0 +1,68 @@
+{
+  "suite": "STOOM-LCR-1.0 Local Candidate Retriever",
+  "total": 15,
+  "pass": 15,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "version 0.9.36",
+      "ok": true
+    },
+    {
+      "name": "LCR module present",
+      "ok": true
+    },
+    {
+      "name": "trusted sources only",
+      "ok": true
+    },
+    {
+      "name": "PPTV cannot generate candidate",
+      "ok": true
+    },
+    {
+      "name": "Context cannot generate candidate",
+      "ok": true
+    },
+    {
+      "name": "old observer chain disconnected",
+      "ok": true
+    },
+    {
+      "name": "ABSTAIN reads LCR only",
+      "ok": true
+    },
+    {
+      "name": "untrusted candidate hard blocked",
+      "ok": true
+    },
+    {
+      "name": "trusted local rescue remains conservative",
+      "ok": true
+    },
+    {
+      "name": "translation rescue uses LCR pool",
+      "ok": true
+    },
+    {
+      "name": "translation rescue no longer requires Topic Pack",
+      "ok": true
+    },
+    {
+      "name": "source transcript remains untouched by LCR rescue",
+      "ok": true
+    },
+    {
+      "name": "source-hint guard is strict",
+      "ok": true
+    },
+    {
+      "name": "Acoustic HDR still disconnected",
+      "ok": true
+    },
+    {
+      "name": "no external LLM integration",
+      "ok": true
+    }
+  ]
+}

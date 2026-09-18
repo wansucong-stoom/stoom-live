@@ -1,0 +1,48 @@
+STOOM LIVE TRANSLATOR v0.9.35 · ABSTAIN GATE SHADOW CANDIDATE
+Validation date: 2026-09-15
+Stable baseline: v0.9.33 RECOGNITION STABILITY FIX
+
+1. JavaScript parse
+- PASS (single inline script parsed with Node Function constructor)
+
+2. Recognition Stability regression
+- 13/13 PASS
+- Watchdog false-restart protections preserved
+- Final-first Interim deferral preserved
+- recognition ownership preserved
+- Stable Top-1 personal override protection preserved
+
+3. Structural Transliteration Guard regression
+- 9/9 PASS
+- Existing STG behavior preserved
+- Shadow ABSTAIN calls STG with recordStats:false
+
+4. ABSTAIN Gate unit tests
+- 15/15 PASS
+- NO_CANDIDATE / NO_DISCRIMINATION / TRANSLATION_DERIVED_ONLY
+- SHORT_NATIVE_GUARD / LOW_COVERAGE
+- independent evidence / phonetic guard / low margin
+- Stable Top-1 stricter threshold
+- deferred observer / candidate cap / evaluation budget
+- Acoustic HDR runtime remains disconnected
+
+5. Protected runtime path freeze
+- 18/18 PASS
+- Protected function hashes match v0.9.33 exactly:
+  mainSpeakerFinalDisposition
+  flushSentenceBuffer
+  evaluateContinuousSentenceBoundary
+  maybeEnforceContinuousSentenceLatency
+  attachLateFinalToRecentCard
+  attachOrphanLateFinal
+  recognitionConfidenceRoute
+  selectContextualNBest
+- Watchdog and Interim-final timing constants unchanged.
+
+6. Browser/microphone regression
+- NOT YET CLAIMED.
+- This candidate must still be tested with the fixed real-microphone sentence set for 3 consecutive runs before promotion.
+
+Conclusion
+- Static/regression gate: PASS.
+- Production promotion: HOLD pending real-microphone regression.

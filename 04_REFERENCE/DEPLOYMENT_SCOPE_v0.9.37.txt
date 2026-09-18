@@ -1,0 +1,20 @@
+STOOM LIVE TRANSLATOR v0.9.37 · KOREAN BOUNDARY + ENGLISH EVIDENCE
+
+Pages: 변경 필요
+- 01_PAGES/STOOM_Live_Translator_latest.html
+- 01_PAGES/index.html (v0.9.36 패키지와 동일)
+- 01_PAGES/updates.html (v0.9.36 패키지와 동일)
+- 01_PAGES/contact.html (v0.9.36 패키지와 동일)
+- 01_PAGES/STOOM_trans_stoom_win_v0.9.37_PAGES_DIRECT_DEPLOY.zip
+
+Worker: 변경 없음
+- v0.10.19 유지
+
+D1: 변경 없음
+- 마이그레이션 없음
+
+핵심 변경 범위
+- 한국어 강한 종결어미(…니다/…니까 등) + 실제 음향 공백 기반 문장 경계
+- Chrome cumulative Interim/Final의 확정 prefix 제거
+- 확정 문장 Terminal Punctuation 보완
+- 실제 관측된 영문 Interim을 trusted local candidate의 보조 evidence로만 사용

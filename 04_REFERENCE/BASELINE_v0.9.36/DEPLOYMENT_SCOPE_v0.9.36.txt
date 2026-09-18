@@ -1,0 +1,18 @@
+STOOM LIVE TRANSLATOR v0.9.36 · LOCAL CANDIDATE RETRIEVER
+
+Pages: 변경 필요
+- 01_PAGES/STOOM_Live_Translator_latest.html
+- index.html / updates.html도 v0.9.36 표시 반영
+- STOOM_trans_stoom_win_v0.9.36_PAGES_DIRECT_DEPLOY.zip 사용 가능
+
+Worker: 변경 없음
+- 현재 Worker v0.10.19 유지
+
+D1: 변경 없음
+- 스키마/마이그레이션 없음
+
+중요:
+- 안정 기준은 계속 v0.9.33 Recognition Stability Fix
+- v0.9.36은 후보판이며 실제 마이크 회귀 전 정식 안정판 승격 금지
+- Local Candidate Retriever/ABSTAIN은 Shadow-only
+- 실제 변경은 trusted local candidate를 이용한 번역 입력 Guarded Rescue에만 제한

@@ -1,0 +1,48 @@
+{
+  "suite": "STOOM-ABSTAIN-1.0 + LCR trusted-local route",
+  "total": 10,
+  "pass": 10,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "ABSTAIN still shadow-only",
+      "ok": true
+    },
+    {
+      "name": "normal two-core path remains",
+      "ok": true
+    },
+    {
+      "name": "single core still abstains when not trusted",
+      "ok": true
+    },
+    {
+      "name": "trusted local route requires strong source fit",
+      "ok": true
+    },
+    {
+      "name": "trusted local route can select",
+      "ok": true
+    },
+    {
+      "name": "trusted local route requires 0.16 margin",
+      "ok": true
+    },
+    {
+      "name": "stable top1 cannot use trusted local shortcut",
+      "ok": true
+    },
+    {
+      "name": "phonetic guard remains first",
+      "ok": true
+    },
+    {
+      "name": "no candidate remains abstain",
+      "ok": true
+    },
+    {
+      "name": "translation-only free candidate path absent",
+      "ok": true
+    }
+  ]
+}

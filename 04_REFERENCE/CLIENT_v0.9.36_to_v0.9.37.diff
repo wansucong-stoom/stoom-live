@@ -1,0 +1,516 @@
+--- /mnt/data/_v36_full/STOOM_v0.9.36_LOCAL_CANDIDATE_RETRIEVER_FULL_PACKAGE/01_PAGES/STOOM_Live_Translator_latest.html	2026-09-14 15:35:10.000000000 +0000
++++ /mnt/data/STOOM_v0.9.37_KOREAN_BOUNDARY_ENGLISH_EVIDENCE_FULL_PACKAGE_CORRECTED/01_PAGES/STOOM_Live_Translator_latest.html	2026-09-14 23:41:54.552188436 +0000
+@@ -2,17 +2,27 @@
+ <!-- STOOM_RELEASE
+ {
+   "product": "STOOM LIVE TRANSLATOR",
+-  "version": "0.9.36",
++  "version": "0.9.37",
+   "released": "2026-09-15",
+   "info": "https://trans.stoom.win/",
+   "notes": [
+-    "Local Candidate Retriever 1.0: Topic Pack·강의 용어집·등록 인식용어처럼 이미 알고 있는 로컬 지식에서만 후보를 검색하고 PPTV/Mixed Bridge의 자유 후보 생성을 최종 판단 경로에서 제거",
+-    "Candidate Sanitizer: trusted source·source hint·span 길이·phonetic fit·coverage를 선검사해 비교해→bright 같은 무관 후보가 ABSTAIN Gate까지 올라오지 않도록 차단",
+-    "Evidence Isolation: PPTV·STG·Context는 후보를 만들지 않고 Local Candidate Retriever가 찾은 후보를 점수화/검증하는 역할로만 제한",
+-    "Regression Freeze: v0.9.33의 Watchdog·Main Speaker·Endpoint·Recognition Ownership·Stable Top-1 경로와 v0.9.35 ABSTAIN 임계값은 변경하지 않음"
++    "Korean Strong Sentence Boundary Guard 1.0: …니다/…니까 계열 종결어미와 실제 음향 공백을 함께 확인해 Chrome 누적 Interim이 다음 문장을 붙여도 이전 문장을 먼저 확정",
++    "Terminal Punctuation Normalizer: 확정된 한국어 평서문에 마침표를, 명시적 의문 종결형에는 물음표를 보완",
++    "Observed English Interim Evidence 1.0: ko-KR 인식 중 Chrome이 실제로 낸 영문 Interim 조각을 버리지 않고 trusted local candidate의 약한 recognition evidence로만 사용",
++    "Interaction Freeze: Local Candidate Retriever·ABSTAIN·STG·Watchdog·Main Speaker·Late Final의 기존 권한은 유지하고 새 기능이 원문 후보를 발명하지 않도록 제한"
+   ],
+   "history": [
+     {
++      "version": "0.9.37",
++      "released": "2026-09-15",
++      "notes": [
++        "STOOM-KSBG-1.0: 한국어 강한 종결어미 + 음향 공백 기반 문장 경계 보호",
++        "같은 Chrome recognition result의 cumulative Interim/Final도 확정 경계 이후 prefix를 제거해 새 문장으로 소유",
++        "최종 한국어 카드 Terminal Punctuation 보완",
++        "STOOM-EIE-1.0: 실제 관측된 영문 Interim만 Topic Pack/강의 용어집 후보의 보조 증거로 보존"
++      ]
++    },
++    {
+       "version": "0.9.36",
+       "released": "2026-09-15",
+       "notes": [
+@@ -648,7 +658,7 @@
+ <head>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+-<title>STOOM LIVE TRANSLATOR v0.9.36 · LOCAL CANDIDATE RETRIEVER</title>
++<title>STOOM LIVE TRANSLATOR v0.9.37 · KOREAN BOUNDARY + ENGLISH EVIDENCE</title>
+ <style>
+   :root{
+     --bg:#08101f;
+@@ -3349,7 +3359,7 @@
+   // Remote deployment contains only:
+   //   1) index.html
+   //   2) STOOM_Live_Translator_latest.html
+-  const APP_VERSION = '0.9.36';
++  const APP_VERSION = '0.9.37';
+   const REMOTE_LATEST_HTML = 'https://trans.stoom.win/STOOM_Live_Translator_latest.html';
+   const UPDATE_INFO_URL = 'https://trans.stoom.win/';
+   const UPDATE_CHECK_TIMEOUT_MS = 5000;
+@@ -5596,6 +5606,8 @@
+       localCandidateExpansions:0, localPhoneticCorrections:0, lateFinalOwnershipRecoveries:0,
+       contextRecoveryHigh:0, contextRecoveryMid:0, contextRecoveryHolds:0, contextContrastGuards:0,
+       continuousSoftBoundaryCommits:0, boundedLatencyCommits:0, boundaryEvaluations:0, boundaryHolds:0,
++      koreanStrongBoundaryDetected:0, koreanStrongBoundaryCommits:0, koreanBoundaryPrefixStrips:0, terminalPunctuationApplied:0,
++      englishInterimHintsObserved:0, englishInterimHintsMatched:0,
+       lowEnergyMainSuppressions:0, maxSentenceBufferAgeMs:0,
+       lastEnvironment:'standard',
+       environmentSamples:0, noiseDbSum:0, noiseDbCount:0, snrDbSum:0, snrDbCount:0,
+@@ -5623,6 +5635,8 @@
+       contextualReconstruction:{loaded:true,mode:'shadow-only',algorithm:'sparse-context-reranker-v1',maxRecentTurns:3,turnDecay:[1,.70,.50],candidateGeneration:false,contextCanInventCandidate:false,activeCorrection:false,runtimeLearning:false,recentTurnsAvailable:Math.min(3,Array.isArray(recentFinals)?recentFinals.length:0)},
+       guardedTranslationRescue:{loaded:true,mode:'active-translation-only',algorithm:'topic-cross-script-rescue-v2-stg',sourceTranscriptMutation:false,requiresTopicPack:true,particleAware:true,fullCandidateRecall:true},
+       structuralTransliterationGuard:{loaded:true,version:'STOOM-STG-1.0',mode:'active-guard',topicPackIndependent:true,dictionaryFree:true,vectorDimensions:9,hardKeepShortSyllables:2,longestSpanFirst:true,partialMatchGuard:true},
++      koreanSentenceBoundaryGuard:{loaded:true,version:'STOOM-KSBG-1.0',mode:'active-safe-boundary',requiresAcousticGap:true,cumulativeResultSplit:true,terminalPunctuation:true},
++      englishInterimEvidence:{loaded:true,version:'STOOM-EIE-1.0',mode:'observed-only',candidateGeneration:false,trustedLocalCandidatesOnly:true},
+       adaptivePronunciation:(()=>{const a=adaptiveLanguage(sourceShort(),false);return a?{clusters:['onset','vowel','coda'].reduce((n,s)=>n+(a.clusters?.[s]?.length||0),0),pending:a.pending?.length||0,stats:a.stats||{}}:null;})(),
+       ttsOutputGuard:typeof ttsOutputGuardSnapshot==='function'?ttsOutputGuardSnapshot():null,
+       recognitionWatchdog: recognitionWatchdogSnapshot?.()||null,
+@@ -6944,12 +6958,79 @@
+     return Math.round(clampNumber(ms,450,1200));
+   }
+ 
++  // ---------- v0.9.37 STOOM-KSBG-1.0 · KOREAN STRONG SENTENCE BOUNDARY GUARD ----------
++  const STOOM_KOREAN_BOUNDARY_GUARD_VERSION='STOOM-KSBG-1.0';
++  const KOREAN_STRONG_BOUNDARY_MIN_GAP_MS=320;
++
++  function koreanFormalSentenceEnding(text=''){
++    const s=norm(text).replace(/[.!?。！？]+$/,'').trim();
++    if(!s)return false;
++    // '마치겠습니다/갑니다/좋습니다/설명합니다/합니까'처럼 어간과 무관하게 formal ending 전체를 포괄합니다.
++    if(/(?:[가-힣]니다|[가-힣]니까)$/.test(s))return true;
++    return /(?:해요|돼요|이에요|예요|거예요|할게요|볼게요|하세요|보세요|되죠|있죠|없죠|맞죠|그렇죠|겠죠|인가요|건가요|은가요|는가요|을까요|할까요|될까요|있나요|없나요|되나요|맞나요|아닌가요|나요|까요)$/.test(s);
++  }
++
+   function naturalSentenceEndText(text='') {
+     const clean=norm(text);
+     if(!clean)return false;
+     return sourceShort()==='ko' ? isKoreanSentenceEnding(clean) : /[.!?。！？]["'”’)]?$/.test(clean);
+   }
+ 
++  function stripTerminalSentencePunctuation(text=''){
++    return norm(text).replace(/[.!?。！？]+$/,'').trim();
++  }
++
++  function cumulativeSuffixAfterBoundary(base='',incoming=''){
++    const a=stripTerminalSentencePunctuation(base),b=norm(incoming);
++    if(!a||!b||b.length<=a.length)return '';
++    if(b.startsWith(a)){
++      const suffix=b.slice(a.length).replace(/^[.!?。！？\s]+/,'').trim();
++      return suffix;
++    }
++    // Chrome가 직전 종결어미 앞쪽 한두 글자를 수정한 누적 Interim도 매우 높은 접두부 유사도일 때만 허용합니다.
++    const prefix=b.slice(0,Math.min(b.length,a.length));
++    if(prefix.length>=Math.max(8,Math.round(a.length*.86))&&textSimilarity(a,prefix,'ko')>=.94){
++      return b.slice(prefix.length).replace(/^[.!?。！？\s]+/,'').trim();
++    }
++    return '';
++  }
++
++  function strongBoundaryAcousticGapMs(now=performance.now()){
++    const g=runtimeSpeechGate;if(!g?.lastMainAt)return 0;
++    return Math.max(0,now-g.lastMainAt);
++  }
++
++  function analyzeKoreanCumulativeBoundary(text='',meta={},phase='interim'){
++    const clean=norm(text),g=runtimeSpeechGate,now=performance.now();
++    if(sourceShort()!=='ko'||!clean||!g)return {text:clean,split:false};
++    const generation=optionalFiniteNumber(meta.generation),resultIndex=optionalFiniteNumber(meta.resultIndex)??optionalFiniteNumber(meta.eventResultIndex);
++
++    // 아직 이전 문장이 COMMIT_PENDING인 동안 Chrome이 같은 result에 다음 문장을 붙이는 경우.
++    if(g.state==='COMMIT_PENDING'&&g.protectedNaturalEnd&&g.protectedSnapshot){
++      const pGen=optionalFiniteNumber(g.protectedRecognitionGeneration),pResult=optionalFiniteNumber(g.protectedEventResultIndex);
++      const sameOwner=(pGen===null||generation===null||pGen===generation)&&(pResult===null||resultIndex===null||pResult===resultIndex);
++      const gapMs=strongBoundaryAcousticGapMs(now),suffix=sameOwner?cumulativeSuffixAfterBoundary(g.protectedSnapshot,clean):'';
++      if(suffix&&gapMs>=KOREAN_STRONG_BOUNDARY_MIN_GAP_MS){
++        if(sessionCorrectionStats)sessionCorrectionStats.koreanBoundaryPrefixStrips=(Number(sessionCorrectionStats.koreanBoundaryPrefixStrips)||0)+1;
++        traceEvent('boundary','korean_boundary.cumulative_split',{version:STOOM_KOREAN_BOUNDARY_GUARD_VERSION,phase,source:'pending',base:g.protectedSnapshot,incoming:clean,suffix,gapMs:Math.round(gapMs),recognitionGeneration:generation,eventResultIndex:resultIndex,segmentSeq:g.segmentSeq});
++        return {text:suffix,split:true,source:'pending',base:g.protectedSnapshot,gapMs};
++      }
++    }
++
++    // 직전 강한 경계를 이미 commit했는데 Chrome이 동일 resultIndex를 누적해서 다시 보내는 경우.
++    if(g.lastStrongBoundaryCommitAt&&now-g.lastStrongBoundaryCommitAt<=4200&&Number(g.segmentSeq)>Number(g.lastStrongBoundarySegmentSeq)){
++      const sameGen=g.lastStrongBoundaryRecognitionGeneration===null||generation===null||g.lastStrongBoundaryRecognitionGeneration===generation;
++      const sameResult=g.lastStrongBoundaryEventResultIndex===null||resultIndex===null||g.lastStrongBoundaryEventResultIndex===resultIndex;
++      const suffix=sameGen&&sameResult?cumulativeSuffixAfterBoundary(g.lastStrongBoundarySource,clean):'';
++      if(suffix){
++        if(sessionCorrectionStats)sessionCorrectionStats.koreanBoundaryPrefixStrips=(Number(sessionCorrectionStats.koreanBoundaryPrefixStrips)||0)+1;
++        traceEvent('boundary','korean_boundary.cumulative_split',{version:STOOM_KOREAN_BOUNDARY_GUARD_VERSION,phase,source:'committed',base:g.lastStrongBoundarySource,incoming:clean,suffix,gapMs:null,recognitionGeneration:generation,eventResultIndex:resultIndex,segmentSeq:g.segmentSeq,lastBoundarySegmentSeq:g.lastStrongBoundarySegmentSeq});
++        return {text:suffix,split:true,source:'committed',base:g.lastStrongBoundarySource};
++      }
++    }
++    return {text:clean,split:false};
++  }
++
+   function effectiveAcousticNoiseFloorDb(){
+     // analyser의 digital-zero(-130~-140dBFS)가 실제 환경 noise floor로 학습되면
+     // 거의 무음인 -90~-100dB 프레임도 speechFrame으로 승격될 수 있습니다.
+@@ -7207,6 +7288,11 @@
+       const sameResult=protectedResult===null||metaResult===null||protectedResult===metaResult;
+       const before=norm(g.protectedSnapshot||'');
+       const isExtension=!!before&&(clean.startsWith(before)||clean.includes(before)||textSimilarity(before,clean,sourceShort())>=.84)&&clean.length>=before.length;
++      const boundarySuffix=(sameGen&&sameResult&&g.protectedNaturalEnd)?cumulativeSuffixAfterBoundary(before,clean):'';
++      if(boundarySuffix&&strongBoundaryAcousticGapMs(now)>=KOREAN_STRONG_BOUNDARY_MIN_GAP_MS){
++        traceEvent('boundary','korean_boundary.pending_extension_held',{version:STOOM_KOREAN_BOUNDARY_GUARD_VERSION,before,incoming:clean,suffix:boundarySuffix,gapMs:Math.round(strongBoundaryAcousticGapMs(now)),gate:traceGateSnapshot()});
++        return;
++      }
+       if(sameGen&&sameResult&&isExtension&&clean!==before){
+         g.protectedSnapshot=appendProtectedText(before,clean);g.protectedHasInterim=true;g.protectedNaturalEnd=naturalSentenceEndText(clean);g.segmentLastInterim=clean;g.segmentInterimAt=now;
+         clearTimeout(g.commitTimer);g.commitTimer=setTimeout(()=>commitProtectedMainSpeakerSentence('refreshed-grace'),Math.max(240,mainSpeakerPostFinalGraceMs()));
+@@ -7367,6 +7453,18 @@
+     return {text:adjusted,applied:true,reason,morphology,prosody,questionVector};
+   }
+ 
++  function applyTerminalSentencePunctuation(text='',{stage='final'}={}){
++    const clean=norm(text);
++    if(!clean||/[.!?。！？]["'”’)]?$/.test(clean)||sourceShort()!=='ko')return {text:clean,applied:false};
++    if(!isKoreanSentenceEnding(clean))return {text:clean,applied:false};
++    const morphology=koreanQuestionMorphology(clean);
++    const mark=morphology.strength==='strong'?'?':'.';
++    const adjusted=clean+mark;
++    if(sessionCorrectionStats)sessionCorrectionStats.terminalPunctuationApplied=(Number(sessionCorrectionStats.terminalPunctuationApplied)||0)+1;
++    traceEvent('boundary','terminal_punctuation.applied',{version:STOOM_KOREAN_BOUNDARY_GUARD_VERSION,stage,before:clean,after:adjusted,mark});
++    return {text:adjusted,applied:true,mark};
++  }
++
+   function finalizeRuntimeSpeechSegment(now=performance.now()){
+     const g=runtimeSpeechGate;
+     if(!g?.speechStartedAt)return;
+@@ -7443,6 +7541,7 @@
+ 
+   function interimOnlyCommitShouldWait(now=performance.now()){
+     const g=runtimeSpeechGate;if(!g||!g.protectedHasInterim||g.protectedHasFinal)return false;
++    if(sourceShort()==='ko'&&g.protectedNaturalEnd)return false;
+     const pendingAge=Math.max(0,now-(g.commitPendingAt||now));
+     const textChangeAge=g.lastTextChangeAt?Math.max(0,now-g.lastTextChangeAt):Number.POSITIVE_INFINITY;
+     const interimAge=g.segmentInterimAt?Math.max(0,now-g.segmentInterimAt):Number.POSITIVE_INFINITY;
+@@ -7468,6 +7567,7 @@
+ 
+   function resumeInterimOnlyPendingOnReentry(now=performance.now(),reason='main-reentry'){
+     const g=runtimeSpeechGate;if(!g||g.state!=='COMMIT_PENDING'||g.protectedHasFinal||!g.protectedHasInterim)return false;
++    if(sourceShort()==='ko'&&g.protectedNaturalEnd){traceEvent('boundary','korean_boundary.reentry_commit_required',{version:STOOM_KOREAN_BOUNDARY_GUARD_VERSION,text:norm(g.protectedSnapshot||''),gapMs:Math.round(strongBoundaryAcousticGapMs(now)),gate:traceGateSnapshot()});return false;}
+     const age=Math.max(0,now-(g.commitPendingAt||now));
+     if(age>INTERIM_REENTRY_RESUME_MS||!g.browserSpeechActive)return false;
+     const text=norm(g.protectedSnapshot||g.segmentLastInterim||'');
+@@ -7490,8 +7590,10 @@
+     if(deferInterimOnlyCommit(reason,performance.now()))return;
+     const snapshotText=norm(g.protectedSnapshot||'');
+     const questionAdjusted=applyQuestionProsodyPunctuation(snapshotText,{stage:'endpoint'});
+-    const text=questionAdjusted.text;
+-    traceEvent('endpoint','commit.execute',{reason,text,rawSnapshot:snapshotText,questionAdjusted:questionAdjusted.applied,hadFinal:!!g.protectedHasFinal,hadInterim:!!g.protectedHasInterim,speechEndToCommitMs:g.lastMainAt?Math.max(0,Math.round(performance.now()-g.lastMainAt)):null,segmentAgeMs:g.speechStartedAt?Math.max(0,Math.round(performance.now()-g.speechStartedAt)):null,gate:traceGateSnapshot()});
++    const terminalAdjusted=applyTerminalSentencePunctuation(questionAdjusted.text,{stage:'endpoint'});
++    const text=terminalAdjusted.text;
++    const commitHadStrongKoreanBoundary=sourceShort()==='ko'&&!!g.protectedNaturalEnd&&isKoreanSentenceEnding(snapshotText);
++    traceEvent('endpoint','commit.execute',{reason,text,rawSnapshot:snapshotText,questionAdjusted:questionAdjusted.applied,terminalPunctuationAdjusted:terminalAdjusted.applied,strongKoreanBoundary:commitHadStrongKoreanBoundary,hadFinal:!!g.protectedHasFinal,hadInterim:!!g.protectedHasInterim,speechEndToCommitMs:g.lastMainAt?Math.max(0,Math.round(performance.now()-g.lastMainAt)):null,segmentAgeMs:g.speechStartedAt?Math.max(0,Math.round(performance.now()-g.speechStartedAt)):null,gate:traceGateSnapshot()});
+     const segmentLastInterim=norm(g.segmentLastInterim||'');
+     const commitHadFinal=!!g.protectedHasFinal,commitHadInterim=!!g.protectedHasInterim;
+     // v0.9.22: endpoint가 Interim으로 먼저 commit된 뒤 같은 Chrome result의 Final이 늦게 도착해도
+@@ -7541,6 +7643,11 @@
+         g.lastCommittedReason=reason;
+         g.lastCommittedRecognitionGeneration=committedRecognitionGeneration;
+         g.lastCommittedEventResultIndex=committedEventResultIndex;
++        if(commitHadStrongKoreanBoundary){
++          g.lastStrongBoundaryCommitAt=performance.now();g.lastStrongBoundarySource=stripTerminalSentencePunctuation(snapshotText||text);g.lastStrongBoundarySegmentSeq=g.lastCommittedSegmentSeq;g.lastStrongBoundaryCardId=cardId;g.lastStrongBoundaryRecognitionGeneration=committedRecognitionGeneration;g.lastStrongBoundaryEventResultIndex=committedEventResultIndex;
++          if(sessionCorrectionStats){sessionCorrectionStats.koreanStrongBoundaryCommits=(Number(sessionCorrectionStats.koreanStrongBoundaryCommits)||0)+1;}
++          traceEvent('boundary','korean_boundary.committed',{version:STOOM_KOREAN_BOUNDARY_GUARD_VERSION,cardId,source:g.lastStrongBoundarySource,segmentSeq:g.lastStrongBoundarySegmentSeq,recognitionGeneration:committedRecognitionGeneration,eventResultIndex:committedEventResultIndex});
++        }
+         traceEvent('endpoint','commit.card_bound',{cardId,source:g.lastCommittedSource,segmentSeq:g.lastCommittedSegmentSeq,reason,recognitionGeneration:g.lastCommittedRecognitionGeneration,eventResultIndex:g.lastCommittedEventResultIndex});
+       }
+     }else{
+@@ -7568,7 +7675,8 @@
+     sentenceBufferStartedAt=0;sentenceBufferLastAppendAt=0;
+     g.protectedHasFinal=!!bufferSnapshot;
+     g.protectedHasInterim=!bufferSnapshot&&!!stableInterim;
+-    g.protectedNaturalEnd=!!(stableInterim&&naturalSentenceEndText(stableInterim));
++    g.protectedNaturalEnd=!!(naturalSentenceEndText(bufferSnapshot||stableInterim));
++    if(sourceShort()==='ko'&&g.protectedNaturalEnd&&sessionCorrectionStats)sessionCorrectionStats.koreanStrongBoundaryDetected=(Number(sessionCorrectionStats.koreanStrongBoundaryDetected)||0)+1;
+     g.protectedSnapshot=appendProtectedText(bufferSnapshot,stableInterim);
+     g.protectedRecognitionGeneration=optionalFiniteNumber(g.lastInterimRecognitionGeneration);
+     g.protectedEventResultIndex=optionalFiniteNumber(g.lastInterimEventResultIndex);
+@@ -7581,7 +7689,7 @@
+     g.inForeground=false;
+     finalizeRuntimeSpeechSegment(now);
+     clearTimeout(g.commitTimer);
+-    const commitDelay=g.protectedHasInterim&&!g.protectedHasFinal?Math.max(900,mainSpeakerPostFinalGraceMs()):mainSpeakerPostFinalGraceMs();
++    const commitDelay=g.protectedHasInterim&&!g.protectedHasFinal?(g.protectedNaturalEnd?Math.max(220,mainSpeakerPostFinalGraceMs()):Math.max(900,mainSpeakerPostFinalGraceMs())):mainSpeakerPostFinalGraceMs();
+     g.commitTimer=setTimeout(()=>commitProtectedMainSpeakerSentence('grace'),commitDelay);
+   }
+ 
+@@ -9316,15 +9424,16 @@
+         if(stg.state==='KEEP')continue;
+         const contextFit=guardedSourceCueFit(c.sourcePreferred,`${input} ${recent}`);
+         const sourceFit=pronunciationSimilarity(observed,c.sourcePreferred,'ko');
+-        // Local Retriever의 source hint는 이미 알고 있는 한국어 표제어이므로 자유 후보 생성 없이 관측 span과 직접 비교합니다.
+-        const rescueScore=clampNumber(.48*similarity+.24*sourceFit+.14*contextFit+.10*stg.score+.04*(Number(c.confidence)||.8),0,1);
+-        scored.push({...c,similarity,sourceFit,contextFit,rescueScore,stg});
++        const englishInterimFit=englishInterimCandidateFit(c.text,{generation:runtimeSpeechGate?.lastInterimRecognitionGeneration,eventResultIndex:runtimeSpeechGate?.lastInterimEventResultIndex});
++        // 실제 Chrome Latin interim은 후보를 만들지 않고 이미 존재하는 trusted candidate에만 약한 가산점으로 사용합니다.
++        const rescueScore=clampNumber(.46*similarity+.22*sourceFit+.13*contextFit+.10*stg.score+.04*(Number(c.confidence)||.8)+.05*englishInterimFit,0,1);
++        scored.push({...c,similarity,sourceFit,contextFit,englishInterimFit,rescueScore,stg});
+       }
+       scored.sort((a,b)=>b.rescueScore-a.rescueScore||b.stg.score-a.stg.score);const best=scored[0],second=scored[1];if(!best)continue;
+       const margin=best.rescueScore-(second?.rescueScore||0),phoneticMargin=best.similarity-(second?.similarity||0),sourceMargin=(best.sourceFit||0)-(second?.sourceFit||0);
+       const structuralStrong=best.stg.state==='STRONG'&&best.stg.score>=.45&&best.stg.coverage>=.64&&best.stg.run>=.42;
+       const trustedSourceStrong=(best.sources||[]).some(localRetrieverTrustedSource)&&(best.sourceFit||0)>=.78&&sourceMargin>=.08&&best.similarity>=.50&&best.stg.coverage>=.60;
+-      const evidenceSafe=(best.similarity>=.74&&phoneticMargin>=.075)||(best.similarity>=.62&&phoneticMargin>=.095&&best.contextFit>=.16)||(best.similarity>=.58&&phoneticMargin>=.045&&best.contextFit>=.52)||(best.similarity>=.56&&phoneticMargin>=.09&&best.contextFit>=.30)||(best.similarity>=.55&&phoneticMargin>=.05&&best.contextFit>=.38)||trustedSourceStrong;
++      const evidenceSafe=(best.similarity>=.74&&phoneticMargin>=.075)||(best.similarity>=.62&&phoneticMargin>=.095&&best.contextFit>=.16)||(best.similarity>=.58&&phoneticMargin>=.045&&best.contextFit>=.52)||(best.similarity>=.56&&phoneticMargin>=.09&&best.contextFit>=.30)||(best.similarity>=.55&&phoneticMargin>=.05&&best.contextFit>=.38)||(best.englishInterimFit>=.78&&best.similarity>=.50&&best.stg.coverage>=.58)||trustedSourceStrong;
+       if(!(structuralStrong||trustedSourceStrong)||!evidenceSafe)continue;
+       evaluated.push({span,best,second,margin,phoneticMargin});
+     }
+@@ -9352,7 +9461,7 @@
+       const replTokens=original.split(/\s+/),lastInfo=stripKoreanPhoneticTailToken(replTokens[replTokens.length-1]);
+       const adjustedSuffix=harmonizeKoreanParticle(best.sourcePreferred,lastInfo.suffix||''),replacementText=best.sourcePreferred+adjustedSuffix;
+       output=output.slice(0,row.start)+replacementText+output.slice(row.end);
+-      corrections.push({observed:original,phoneticObserved:span.phoneticText||span.text,replacement:replacementText,sourcePreferred:best.sourcePreferred,targetTerm:best.targetPreferred||best.text,matchedTarget:best.text,conceptId:best.conceptId,sources:best.sources||[],similarity:Number(best.similarity.toFixed(4)),sourceFit:Number((best.sourceFit||0).toFixed(4)),contextFit:Number(best.contextFit.toFixed(4)),score:Number(best.rescueScore.toFixed(4)),margin:Number(margin.toFixed(4)),phoneticMargin:Number(phoneticMargin.toFixed(4)),originalSuffix:lastInfo.suffix||'',adjustedSuffix,structuralGuard:best.stg});
++      corrections.push({observed:original,phoneticObserved:span.phoneticText||span.text,replacement:replacementText,sourcePreferred:best.sourcePreferred,targetTerm:best.targetPreferred||best.text,matchedTarget:best.text,conceptId:best.conceptId,sources:best.sources||[],similarity:Number(best.similarity.toFixed(4)),sourceFit:Number((best.sourceFit||0).toFixed(4)),contextFit:Number(best.contextFit.toFixed(4)),englishInterimFit:Number((best.englishInterimFit||0).toFixed(4)),score:Number(best.rescueScore.toFixed(4)),margin:Number(margin.toFixed(4)),phoneticMargin:Number(phoneticMargin.toFixed(4)),originalSuffix:lastInfo.suffix||'',adjustedSuffix,structuralGuard:best.stg});
+     });
+     corrections.reverse();
+     const count=corrections.length,elapsed=Math.max(0,performance.now()-started);
+@@ -9545,10 +9654,68 @@
+ 
+ 
+ 
+-  // ---------- v0.9.36 STOOM-LCR-1.0 · LOCAL CANDIDATE RETRIEVER ----------
++  // ---------- v0.9.37 STOOM-EIE-1.0 · OBSERVED ENGLISH INTERIM EVIDENCE ----------
++  // 후보를 만들지 않습니다. ko-KR Chrome STT가 실제로 출력한 Latin interim 조각만 짧게 보존해
++  // trusted local candidate(Topic Pack/강의 용어집)의 recognition evidence로만 사용합니다.
++  const STOOM_ENGLISH_INTERIM_EVIDENCE_VERSION='STOOM-EIE-1.0';
++  const ENGLISH_INTERIM_EVIDENCE_TTL_MS=5200;
++  const observedEnglishInterimEvidence=new Map();
++
++  function englishInterimEvidenceKey(meta={}){
++    const g=optionalFiniteNumber(meta.generation)??optionalFiniteNumber(runtimeSpeechGate?.lastInterimRecognitionGeneration)??0;
++    const r=optionalFiniteNumber(meta.resultIndex)??optionalFiniteNumber(meta.eventResultIndex)??optionalFiniteNumber(runtimeSpeechGate?.lastInterimEventResultIndex)??-1;
++    return `${g}:${r}`;
++  }
++  function pruneEnglishInterimEvidence(now=performance.now()){
++    for(const [k,v] of observedEnglishInterimEvidence){if(!v?.at||now-v.at>ENGLISH_INTERIM_EVIDENCE_TTL_MS)observedEnglishInterimEvidence.delete(k);}
++  }
++  function captureObservedEnglishInterimEvidence(text='',meta={}){
++    if(sourceShort()!=='ko')return;
++    const clean=norm(text);if(!clean)return;
++    const fragments=(clean.match(/[A-Za-z][A-Za-z'’-]{2,}/g)||[]).map(x=>x.toLowerCase().replace(/[^a-z'-]/g,'')).filter(x=>x.length>=3);
++    if(!fragments.length)return;
++    const now=performance.now();pruneEnglishInterimEvidence(now);
++    const key=englishInterimEvidenceKey(meta),prev=observedEnglishInterimEvidence.get(key)||{fragments:[],at:0,generation:optionalFiniteNumber(meta.generation),resultIndex:optionalFiniteNumber(meta.resultIndex)??optionalFiniteNumber(meta.eventResultIndex)};
++    const set=new Set([...(prev.fragments||[]),...fragments]);
++    prev.fragments=[...set].sort((a,b)=>b.length-a.length).slice(0,8);prev.at=now;observedEnglishInterimEvidence.set(key,prev);
++    if(sessionCorrectionStats)sessionCorrectionStats.englishInterimHintsObserved=(Number(sessionCorrectionStats.englishInterimHintsObserved)||0)+fragments.length;
++    traceEvent('diagnostic','english_interim_evidence.observed',{version:STOOM_ENGLISH_INTERIM_EVIDENCE_VERSION,key,fragments:prev.fragments,sourceText:clean,candidateGeneration:false,runtimeMutation:false});
++  }
++  function englishInterimCandidateFit(candidate='',meta={}){
++    const cand=String(candidate||'').toLowerCase().replace(/[^a-z]/g,'');if(cand.length<3)return 0;
++    const now=performance.now();pruneEnglishInterimEvidence(now);
++    const keys=[];const exact=englishInterimEvidenceKey(meta);
++    const metaResult=optionalFiniteNumber(meta.resultIndex)??optionalFiniteNumber(meta.eventResultIndex);
++    if(observedEnglishInterimEvidence.has(exact))keys.push(exact);
++    else if(metaResult===null){
++      // result ownership을 모르는 보조 호출에서만 아주 최근 same-generation hint를 fallback으로 허용합니다.
++      const gen=optionalFiniteNumber(meta.generation)??optionalFiniteNumber(runtimeSpeechGate?.lastInterimRecognitionGeneration);
++      for(const [k,row] of observedEnglishInterimEvidence){if(gen!==null&&row?.generation!==null&&row?.generation!==gen)continue;if(now-(row?.at||0)<=1800)keys.push(k);}
++    }
++    let best=0,bestFragment='';
++    for(const k of keys){
++      const row=observedEnglishInterimEvidence.get(k);if(!row||now-row.at>ENGLISH_INTERIM_EVIDENCE_TTL_MS)continue;
++      for(const fragmentRaw of row.fragments||[]){
++        const f=fragmentRaw.replace(/[^a-z]/g,'');if(f.length<3)continue;
++        let fit=0;
++        if(cand.startsWith(f))fit=.62+.38*Math.min(1,f.length/7);
++        else if(f.startsWith(cand))fit=.82;
++        else{
++          const prefix=cand.slice(0,Math.max(3,Math.min(cand.length,f.length+2)));
++          fit=.68*textSimilarity(f,prefix,'en');
++        }
++        if(f.length<4)fit=Math.min(fit,.79);
++        if(fit>best){best=fit;bestFragment=fragmentRaw;}
++      }
++    }
++    if(best>=.68&&sessionCorrectionStats)sessionCorrectionStats.englishInterimHintsMatched=(Number(sessionCorrectionStats.englishInterimHintsMatched)||0)+1;
++    return clampNumber(best,0,1);
++  }
++
++  // ---------- v0.9.37 STOOM-LCR-1.1 · LOCAL CANDIDATE RETRIEVER ----------
+   // 후보를 발명하지 않습니다. 이미 알고 있는 로컬 지식에서만 검색합니다.
+   // PPTV/STG/Context는 검색된 후보를 검증/재순위할 수 있지만 후보 자체를 만들 수 없습니다.
+-  const STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION='STOOM-LCR-1.0';
++  const STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION='STOOM-LCR-1.1';
+   const STOOM_LOCAL_RETRIEVER_MAX_POOL=1200;
+   const STOOM_LOCAL_RETRIEVER_MAX_ROWS=20;
+   const STOOM_LOCAL_RETRIEVER_MIN_FIT=.42;
+@@ -9630,15 +9797,18 @@
+         checked++;
+         const crossFit=primary==='ko'&&target==='en'?mixedCrossScriptSimilarity(observed,'ko',c.text,'en'):0;
+         const src=localRetrieverSourceFit(observed,c,primary),sourceFit=src.fit;
+-        const retrievalFit=Math.max(sourceFit,crossFit);
++        const englishInterimFit=primary==='ko'&&target==='en'?englishInterimCandidateFit(c.text,recognitionMeta):0;
++        const observedEnglishSupport=englishInterimFit>=.68?englishInterimFit*.66:0;
++        const retrievalFit=Math.max(sourceFit,crossFit,observedEnglishSupport);
+         if(retrievalFit<STOOM_LOCAL_RETRIEVER_MIN_FIT)continue;
+         const stg=primary==='ko'&&target==='en'?structuralTransliterationGuard(observed,c.text,span,{recordStats:false}):null;
+-        if(stg?.hardKeep&&sourceFit<.70)continue;
+-        if(stg&&(Number(stg.observedCoverage)<.56||Number(stg.candidateCoverage)<.56)&&sourceFit<.74)continue;
++        if(stg?.hardKeep&&sourceFit<.70&&englishInterimFit<.72)continue;
++        if(stg&&(Number(stg.observedCoverage)<.56||Number(stg.candidateCoverage)<.56)&&sourceFit<.74&&englishInterimFit<.80)continue;
+         const nbest=mixedBridgeNBestSupport(c.text,target,alternatives),exactNBest=mixedBridgeExactNBestSupport(c.text,target,alternatives);
+         const recentFit=localRetrieverRecentFit(c),domain=clampNumber(Number(c.confidence)||0,0,1);
+-        const retrievalScore=clampNumber(.46*retrievalFit+.22*sourceFit+.12*(stg?.score||0)+.10*domain+.06*nbest+.04*recentFit,0,1);
+-        ranked.push({observed:span.text,phoneticObserved:observed,observedLang:primary,candidate:c.text,candidateLang:target,tailSuffix:span.tailSuffix||'',sourceHint:src.hint,sourceFit:Number(sourceFit.toFixed(4)),crossFit:Number(crossFit.toFixed(4)),retrievalFit:Number(retrievalFit.toFixed(4)),score:Number(retrievalScore.toFixed(4)),personal:null,domain:Number(domain.toFixed(4)),independentDomain:Number(domain.toFixed(4)),nbest:Number(nbest.toFixed(4)),exactNBest:Number(exactNBest.toFixed(4)),recentFit:Number(recentFit.toFixed(4)),sources:(c.sources||[]).filter(localRetrieverTrustedSource),conceptIds:c.conceptIds||[],trustedLocal:true});
++        const baseScore=.46*retrievalFit+.22*sourceFit+.12*(stg?.score||0)+.10*domain+.06*nbest+.04*recentFit;
++        const retrievalScore=clampNumber(baseScore+.08*englishInterimFit,0,1);
++        ranked.push({observed:span.text,phoneticObserved:observed,observedLang:primary,candidate:c.text,candidateLang:target,tailSuffix:span.tailSuffix||'',sourceHint:src.hint,sourceFit:Number(sourceFit.toFixed(4)),crossFit:Number(crossFit.toFixed(4)),englishInterimFit:Number(englishInterimFit.toFixed(4)),retrievalFit:Number(retrievalFit.toFixed(4)),score:Number(retrievalScore.toFixed(4)),personal:null,domain:Number(domain.toFixed(4)),independentDomain:Number(domain.toFixed(4)),nbest:Number(nbest.toFixed(4)),exactNBest:Number(exactNBest.toFixed(4)),recentFit:Number(recentFit.toFixed(4)),sources:(c.sources||[]).filter(localRetrieverTrustedSource),conceptIds:c.conceptIds||[],trustedLocal:true});
+       }
+     }
+     ranked.sort((a,b)=>b.score-a.score||b.sourceFit-a.sourceFit||b.retrievalFit-a.retrievalFit);
+@@ -9649,7 +9819,7 @@
+     const shadowCandidates=[...grouped.values()].flat().sort((a,b)=>b.score-a.score).slice(0,STOOM_LOCAL_RETRIEVER_MAX_ROWS);
+     const elapsed=Math.max(0,performance.now()-started),best=shadowCandidates[0]||null;
+     if(traceDiagnosticState?.localCandidateRetriever){const d=traceDiagnosticState.localCandidateRetriever;d.evaluations++;d.poolSizeMax=Math.max(d.poolSizeMax,pool.length);d.candidatesChecked+=checked;d.rowsProduced+=shadowCandidates.length;d.evalMsSum+=elapsed;d.evalMsCount++;d.evalMsMax=Math.max(d.evalMsMax,elapsed);if(!shadowCandidates.length)d.noMatch++;}
+-    traceEvent('diagnostic','local_candidate_retriever.shadow',{version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:pool.length,candidatesChecked:checked,rowCount:shadowCandidates.length,best:best?{observed:best.observed,candidate:best.candidate,sourceHint:best.sourceHint,sourceFit:best.sourceFit,crossFit:best.crossFit,retrievalFit:best.retrievalFit,score:best.score,sources:best.sources}:null,candidateGeneration:false,pptvCanGenerateCandidate:false,contextCanGenerateCandidate:false,runtimeMutation:false,criticalPath:false,evaluationMs:Number(elapsed.toFixed(3))});
++    traceEvent('diagnostic','local_candidate_retriever.shadow',{version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:pool.length,candidatesChecked:checked,rowCount:shadowCandidates.length,best:best?{observed:best.observed,candidate:best.candidate,sourceHint:best.sourceHint,sourceFit:best.sourceFit,crossFit:best.crossFit,englishInterimFit:best.englishInterimFit||0,retrievalFit:best.retrievalFit,score:best.score,sources:best.sources}:null,candidateGeneration:false,pptvCanGenerateCandidate:false,contextCanGenerateCandidate:false,runtimeMutation:false,criticalPath:false,evaluationMs:Number(elapsed.toFixed(3))});
+     return {version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:pool.length,checked,shadowCandidates,best,evaluationMs:Number(elapsed.toFixed(3))};
+   }
+ 
+@@ -9728,8 +9898,9 @@
+     if(stg?.syllables<=2)return {blocked:true,reason:'SHORT_NATIVE_GUARD',stg};
+     const sourceFit=clampNumber(Number(row.sourceFit)||0,0,1);
+     if(stg&&(Number(stg.observedCoverage)<.64||Number(stg.candidateCoverage)<.64)&&sourceFit<.76)return {blocked:true,reason:'LOW_COVERAGE',stg};
+-    const exactNBest=Number(row.exactNBest)||0,nbest=clampNumber(Number(row.nbest)||0,0,1);
+-    const recognition=clampNumber(.82*Math.max(exactNBest>0?1:0,nbest)+.18*clampNumber(Number(row.recentFit)||0,0,1),0,1);
++    const exactNBest=Number(row.exactNBest)||0,nbest=clampNumber(Number(row.nbest)||0,0,1),englishInterimFit=clampNumber(Number(row.englishInterimFit)||0,0,1);
++    const chromeObserved=Math.max(exactNBest>0?1:0,nbest,englishInterimFit*.88);
++    const recognition=clampNumber(.82*chromeObserved+.18*clampNumber(Number(row.recentFit)||0,0,1),0,1);
+     const stgEvidence=abstainStgEvidence(stg);
+     let phonetic=null;
+     if(Number.isFinite(stgEvidence)&&sourceFit>0)phonetic=clampNumber(.58*stgEvidence+.42*sourceFit,0,1);
+@@ -10039,6 +10210,12 @@
+       protectedHasFinal:false,
+       protectedHasInterim:false,
+       protectedNaturalEnd:false,
++      lastStrongBoundaryCommitAt:0,
++      lastStrongBoundarySource:'',
++      lastStrongBoundarySegmentSeq:-1,
++      lastStrongBoundaryCardId:'',
++      lastStrongBoundaryRecognitionGeneration:null,
++      lastStrongBoundaryEventResultIndex:null,
+       interimCommitDeferredCount:0,
+       interimReentryResumedCount:0,
+       lastFinalAt:0,
+@@ -10445,7 +10622,7 @@
+     return {
+       schema:TRACE_LOG_SCHEMA,appVersion:APP_VERSION,sessionId:traceSessionId||null,startedAt:traceStartedAtISO||null,savedAt:new Date().toISOString(),
+       notice:'원음/PCM은 포함하지 않습니다. STT 인식문과 번역문은 오류 분석을 위해 포함됩니다. 엔진 기여·Provenance·Interaction·Shadow·Incremental 진단은 이 로컬 Trace JSON에만 포함되며 진단 heartbeat/Worker/D1 payload에는 추가하지 않습니다.',
+-      diagnosticMeta:{observerOnly:true,decisionSideEffect:false,evaluationMode:'runtime',baselineVersion:'0.9.33',engineDiagnosticsVersion:'2.7',provenanceVersion:'STOOM-PROV-1.0',shadowDiagnosticsEnabled:true,ablationEnabled:false,mixedBridgeMode:'diagnostic-only-not-candidate-source',contextualReconstructionMode:'diagnostic-only-not-candidate-source',guardedTranslationRescueMode:'active-translation-only',structuralTransliterationGuard:'STOOM-STG-1.0',abstainGate:'STOOM-ABSTAIN-1.0-shadow',localCandidateRetriever:'STOOM-LCR-1.0-shadow',candidateGenerationPolicy:'trusted-local-retrieval-only',acousticHdrRuntimeConnected:false},
++      diagnosticMeta:{observerOnly:true,decisionSideEffect:false,evaluationMode:'runtime',baselineVersion:'0.9.33',engineDiagnosticsVersion:'2.7',provenanceVersion:'STOOM-PROV-1.0',shadowDiagnosticsEnabled:true,ablationEnabled:false,mixedBridgeMode:'diagnostic-only-not-candidate-source',contextualReconstructionMode:'diagnostic-only-not-candidate-source',guardedTranslationRescueMode:'active-translation-only',structuralTransliterationGuard:'STOOM-STG-1.0',abstainGate:'STOOM-ABSTAIN-1.0-shadow',localCandidateRetriever:'STOOM-LCR-1.1-shadow',candidateGenerationPolicy:'trusted-local-retrieval-only',koreanSentenceBoundaryGuard:'STOOM-KSBG-1.0',englishInterimEvidence:'STOOM-EIE-1.0-observed-only',acousticHdrRuntimeConnected:false},
+       provenanceRegistry:STOOM_PROVENANCE_REGISTRY,
+       environment:{
+         sourceLang:sourceSelect?.value||'',targets:selectedTargets?.()||[],speedMode,foregroundGuardMode,
+@@ -12540,7 +12717,7 @@
+     if (!tgt) return '';
+     const src = sourceShort();
+ 
+-    // v0.9.36: Endpoint Interim을 포함한 실제 번역 입력에서 trusted local candidate(Topic Pack/강의 용어집)를
++    // v0.9.37: Endpoint Interim을 포함한 실제 번역 입력에서 trusted local candidate(Topic Pack/강의 용어집)를
+     // STG + source-hint guard로 검증해 원문 정식 용어로만 복원합니다. 화면의 원문 STT 자체는 변경하지 않습니다.
+     const rescued = guardedTranslationRescue(text, tgt);
+     const translationSource = rescued.text || text;
+@@ -12662,6 +12839,7 @@
+ 
+   function resetLiveSentenceRevisionState({clearCards=false}={}) {
+     openProvisionalCardId='';
++    try{observedEnglishInterimEvidence.clear();}catch{}
+     resetIncrementalFastPathState('live-revision-reset',{keepPreviewCard:false});
+     if(clearCards){liveTranslationCards.clear();clearTtsRevisionState();}
+   }
+@@ -13125,13 +13303,16 @@
+     const cards=[...liveTranslationCards.values()].filter(meta=>{
+       if(!meta||meta.provisional||meta.previewOnly||!sameTargetSet(meta.targets||[],targets))return false;
+       if(optionalFiniteNumber(meta.recognitionGeneration)!==generation||optionalFiniteNumber(meta.eventResultIndex)!==resultIndex)return false;
++      const g=runtimeSpeechGate;
++      if(g?.lastStrongBoundaryCardId===meta.id&&g.lastStrongBoundaryCommitAt&&performance.now()-g.lastStrongBoundaryCommitAt<=4200&&Number(g.segmentSeq)>Number(meta.segmentSeq))return false;
+       return now-Number(meta.updatedAt||0)<=6500;
+     }).sort((a,b)=>b.updatedAt-a.updatedAt);
+     return cards[0]||null;
+   }
+ 
+   function queueTranslation(text,{provisional=false,reason='final',recognitionGeneration=null,eventResultIndex=null}={}) {
+-    const clean = norm(text);
++    const rawClean = norm(text);
++    const clean = provisional?rawClean:applyTerminalSentencePunctuation(rawClean,{stage:`queue:${reason}`}).text;
+     const targets = selectedTargets();
+     traceEvent('sentence','translation.request',{text:clean,provisional,reason,targets,openProvisionalCardId});
+     if (!targets.length) return null;
+@@ -13220,7 +13401,7 @@
+     const punctuation=[...clean.matchAll(/[.!?。！？](?=\s|$)/g)];
+     if(punctuation.length){const m=punctuation[punctuation.length-1];return m.index+1;}
+     if(sourceShort()==='ko'){
+-      const re=/(?:입니다|아닙니다|합니다|됩니다|있습니다|없습니다|같습니다|맞습니다|않습니다|좋습니다|필요합니다|가능합니다|중요합니다|보겠습니다|살펴보겠습니다|알아보겠습니다|하겠습니다|되겠습니다|했습니다|되었습니다|있었습니다|없었습니다|바랍니다|드리겠습니다|말씀드리겠습니다|설명드리겠습니다|해요|돼요|이에요|예요|거예요|할게요|볼게요|하세요|보세요|되죠|있죠|없죠|맞죠|그렇죠|겠죠|인가요|나요|까요|합니까|됩니까|습니까|입니까)(?=\s|$)/g;
++      const re=/(?:[가-힣]니다|[가-힣]니까|해요|돼요|이에요|예요|거예요|할게요|볼게요|하세요|보세요|되죠|있죠|없죠|맞죠|그렇죠|겠죠|인가요|건가요|은가요|는가요|을까요|할까요|될까요|있나요|없나요|되나요|맞나요|아닌가요|나요|까요)(?=\s|$)/g;
+       const matches=[...clean.matchAll(re)];
+       if(matches.length){const m=matches[matches.length-1];return m.index+m[0].length;}
+     }
+@@ -13383,14 +13564,9 @@
+   function isKoreanSentenceEnding(text='') {
+     const s = norm(text);
+     if (!s) return false;
+-
+-    // 문장부호는 언어와 무관하게 명확한 종결 신호입니다.
+     if (/[.!?。！？]["'”’)]?$/.test(s)) return true;
+-
+-    // 한국어 강의에서 자주 쓰는 종결 표현.
+-    // 지나치게 넓은 '다/요' 단독 판정은 오인 분할을 늘리므로
+-    // 실제 강의체에서 자주 쓰이는 형태를 중심으로 판정합니다.
+-    return /(?:입니다|아닙니다|합니다|됩니다|있습니다|없습니다|같습니다|맞습니다|않습니다|좋습니다|필요합니다|가능합니다|중요합니다|보겠습니다|살펴보겠습니다|알아보겠습니다|하겠습니다|되겠습니다|했습니다|되었습니다|있었습니다|없었습니다|바랍니다|드리겠습니다|말씀드리겠습니다|설명드리겠습니다|해요|돼요|이에요|예요|거예요|할게요|볼게요|하세요|보세요|되죠|있죠|없죠|맞죠|그렇죠|겠죠|인가요|나요|까요|합니까|됩니까|습니까|입니까)["'”’)]?$/.test(s);
++    const core=s.replace(/["'”’)]$/,'');
++    return koreanFormalSentenceEnding(core);
+   }
+ 
+   function findNaturalSplitIndex(text) {
+@@ -13408,7 +13584,7 @@
+     }
+ 
+     // 우선순위 2: 한국어 종결 표현 뒤에 다음 구절이 이어지는 경우
+-    const endingPattern = /(?:입니다|아닙니다|합니다|됩니다|있습니다|없습니다|같습니다|맞습니다|않습니다|좋습니다|필요합니다|가능합니다|중요합니다|보겠습니다|살펴보겠습니다|알아보겠습니다|하겠습니다|되겠습니다|했습니다|되었습니다|있었습니다|없었습니다|바랍니다|드리겠습니다|말씀드리겠습니다|설명드리겠습니다|해요|돼요|이에요|예요|거예요|할게요|볼게요|하세요|보세요|되죠|있죠|없죠|맞죠|그렇죠|겠죠|인가요|나요|까요|합니까|됩니까|습니까|입니까)(?=\s)/g;
++    const endingPattern = /(?:[가-힣]니다|[가-힣]니까|해요|돼요|이에요|예요|거예요|할게요|볼게요|하세요|보세요|되죠|있죠|없죠|맞죠|그렇죠|겠죠|인가요|건가요|은가요|는가요|을까요|할까요|될까요|있나요|없나요|되나요|맞나요|아닌가요|나요|까요)(?=\s)/g;
+     const endings = [...zone.matchAll(endingPattern)];
+     if (endings.length) {
+       const m = endings[endings.length - 1];
+@@ -14104,12 +14280,15 @@
+         const transcript = result[0]?.transcript || '';
+         const topConfidence=Number(result[0]?.confidence);
+         if (result.isFinal) {
++          const finalMeta={generation,resultIndex:i,eventResultIndex:event.resultIndex,browserConfidence:Number.isFinite(topConfidence)&&topConfidence>0?topConfidence:null};
++          const boundaryFinal=analyzeKoreanCumulativeBoundary(transcript,finalMeta,'final');
+           const alternatives=[];
+           for(let k=0;k<Math.min(result.length,3);k++){
+-            const alt=norm(result[k]?.transcript||'');
++            const altRaw=norm(result[k]?.transcript||'');
++            const alt=analyzeKoreanCumulativeBoundary(altRaw,finalMeta,'final-alt').text;
+             if(alt) alternatives.push(alt);
+           }
+-          acceptFinal(transcript, alternatives,{generation,resultIndex:i,eventResultIndex:event.resultIndex,browserConfidence:Number.isFinite(topConfidence)&&topConfidence>0?topConfidence:null});
++          acceptFinal(boundaryFinal.text, alternatives,finalMeta);
+         } else {
+           interim += transcript;
+           if(Number.isFinite(topConfidence)&&topConfidence>0)interimConfidences.push(topConfidence);
+@@ -14118,10 +14297,14 @@
+       interim = norm(interim);
+       if (interim) {
+         const interimConfidence=interimConfidences.length?interimConfidences.reduce((a,b)=>a+b,0)/interimConfidences.length:null;
+-        const deltaInfo=updateIncrementalInterimState(interim,{generation,eventResultIndex:event.resultIndex,browserConfidence:interimConfidence});
++        const interimMeta={generation,eventResultIndex:event.resultIndex,browserConfidence:interimConfidence};
++        captureObservedEnglishInterimEvidence(interim,interimMeta);
++        interim=analyzeKoreanCumulativeBoundary(interim,interimMeta,'interim').text;
++        if(!interim){interimText.textContent='계속 말씀해 주세요…';interimText.classList.add('placeholder');return;}
++        const deltaInfo=updateIncrementalInterimState(interim,interimMeta);
+         traceInterim(interim,{generation,eventResultIndex:event.resultIndex,delta:deltaInfo});
+-        trackMainSpeakerInterim(interim,{generation,eventResultIndex:event.resultIndex});
+-        scheduleStablePrefixTranslation(interim,deltaInfo,{generation,eventResultIndex:event.resultIndex,browserConfidence:interimConfidence});
++        trackMainSpeakerInterim(interim,interimMeta);
++        scheduleStablePrefixTranslation(interim,deltaInfo,interimMeta);
+         const hideOther=effectiveForegroundGuardMode()!=='off'
+           && runtimeSpeechGate?.lastFrameKind==='other'
+           && runtimeSpeechGate?.otherSpeakerActive;

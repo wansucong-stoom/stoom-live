@@ -1,0 +1,11 @@
+STOOM LIVE TRANSLATOR v0.9.37 VALIDATION REPORT
+
+Boundary + English Evidence: PASS · v0.9.37 boundary/evidence tests PASS { behavior: 0.7828571428571428, construct: 0 }
+Recognition Stability: PASS
+Protected Runtime Path: PASS
+STG: PASS
+
+Package basis: v0.9.36 FULL PACKAGE 전체 구조 승계
+Pages direct deploy: 4 files (latest/index/updates/contact)
+Worker: unchanged v0.10.19
+D1: unchanged / no migration

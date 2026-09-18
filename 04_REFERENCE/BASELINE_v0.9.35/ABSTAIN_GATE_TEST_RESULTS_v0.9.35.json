@@ -1,0 +1,68 @@
+{
+  "suite": "STOOM-ABSTAIN-1.0 Shadow Gate",
+  "total": 15,
+  "pass": 15,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "ABSTAIN module present",
+      "ok": true
+    },
+    {
+      "name": "shadow-only mode present",
+      "ok": true
+    },
+    {
+      "name": "bounded observer",
+      "ok": true
+    },
+    {
+      "name": "no candidate abstains",
+      "ok": true
+    },
+    {
+      "name": "no discrimination abstains",
+      "ok": true
+    },
+    {
+      "name": "translation-only candidate is blocked",
+      "ok": true
+    },
+    {
+      "name": "short native stays protected",
+      "ok": true
+    },
+    {
+      "name": "coverage below .64 abstains",
+      "ok": true
+    },
+    {
+      "name": "context/topic without two core groups cannot select",
+      "ok": true
+    },
+    {
+      "name": "phonetic below .65 cannot select",
+      "ok": true
+    },
+    {
+      "name": "low margin abstains",
+      "ok": true
+    },
+    {
+      "name": "strong independent evidence selects in shadow",
+      "ok": true
+    },
+    {
+      "name": "stable top1 raises threshold",
+      "ok": true
+    },
+    {
+      "name": "STG observer does not record runtime stats",
+      "ok": true
+    },
+    {
+      "name": "Acoustic HDR not connected to LIVE runtime",
+      "ok": true
+    }
+  ]
+}

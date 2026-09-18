@@ -1,0 +1,435 @@
+--- /mnt/data/STOOM_v0.9.35_ABSTAIN_GATE_SHADOW_CANDIDATE_FULL_PACKAGE/01_PAGES/STOOM_Live_Translator_latest.html	2026-09-14 15:27:36.103488690 +0000
++++ /mnt/data/STOOM_v0.9.36_LOCAL_CANDIDATE_RETRIEVER_FULL_PACKAGE/01_PAGES/STOOM_Live_Translator_latest.html	2026-09-14 15:35:10.216554465 +0000
+@@ -2,17 +2,27 @@
+ <!-- STOOM_RELEASE
+ {
+   "product": "STOOM LIVE TRANSLATOR",
+-  "version": "0.9.35",
++  "version": "0.9.36",
+   "released": "2026-09-15",
+   "info": "https://trans.stoom.win/",
+   "notes": [
+-    "ABSTAIN Gate 1.0 Shadow: N-best·Mixed Bridge·PPTV·STG·Context/Topic 근거를 독립 evidence group으로 묶어 KEEP/SELECT/ABSTAIN을 관측하되 실제 STT·번역·TTS에는 반영하지 않음",
+-    "Evidence Separation: 후보 생성·음향/음성구조 검증·문맥 prior·최종 판단의 역할을 분리하고 번역 결과 단독 후보, 짧은 일반어, 낮은 coverage, 낮은 margin은 자동 SELECT 금지",
+-    "Deferred Observer: ABSTAIN 계산을 requestIdleCallback/지연 task로 실행하고 최대 8후보·6ms budget·latest-only 대기열로 제한해 실시간 STT/Endpoint/번역 critical path를 보호",
+-    "Regression Freeze: v0.9.33의 Watchdog·Main Speaker·Endpoint·Recognition Ownership·Stable Top-1 경로와 임계값은 변경하지 않음"
++    "Local Candidate Retriever 1.0: Topic Pack·강의 용어집·등록 인식용어처럼 이미 알고 있는 로컬 지식에서만 후보를 검색하고 PPTV/Mixed Bridge의 자유 후보 생성을 최종 판단 경로에서 제거",
++    "Candidate Sanitizer: trusted source·source hint·span 길이·phonetic fit·coverage를 선검사해 비교해→bright 같은 무관 후보가 ABSTAIN Gate까지 올라오지 않도록 차단",
++    "Evidence Isolation: PPTV·STG·Context는 후보를 만들지 않고 Local Candidate Retriever가 찾은 후보를 점수화/검증하는 역할로만 제한",
++    "Regression Freeze: v0.9.33의 Watchdog·Main Speaker·Endpoint·Recognition Ownership·Stable Top-1 경로와 v0.9.35 ABSTAIN 임계값은 변경하지 않음"
+   ],
+   "history": [
+     {
++      "version": "0.9.36",
++      "released": "2026-09-15",
++      "notes": [
++        "STOOM-LCR-1.0 Local Candidate Retriever 추가",
++        "Topic Pack·강의 용어집·등록 인식용어만 trusted candidate source로 허용",
++        "PPTV/Mixed Bridge/Context의 자유 후보 생성을 ABSTAIN decision path에서 제거",
++        "Candidate Sanitizer와 source-hint phonetic fit으로 무관 후보를 조기 차단"
++      ]
++    },
++    {
+       "version": "0.9.35",
+       "released": "2026-09-15",
+       "notes": [
+@@ -638,7 +648,7 @@
+ <head>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+-<title>STOOM LIVE TRANSLATOR v0.9.28 · DUAL PPTV MIXED BRIDGE SHADOW</title>
++<title>STOOM LIVE TRANSLATOR v0.9.36 · LOCAL CANDIDATE RETRIEVER</title>
+ <style>
+   :root{
+     --bg:#08101f;
+@@ -3339,7 +3349,7 @@
+   // Remote deployment contains only:
+   //   1) index.html
+   //   2) STOOM_Live_Translator_latest.html
+-  const APP_VERSION = '0.9.35';
++  const APP_VERSION = '0.9.36';
+   const REMOTE_LATEST_HTML = 'https://trans.stoom.win/STOOM_Live_Translator_latest.html';
+   const UPDATE_INFO_URL = 'https://trans.stoom.win/';
+   const UPDATE_CHECK_TIMEOUT_MS = 5000;
+@@ -9179,19 +9189,16 @@
+   let guardedTranslationRescueCache={key:'',rows:[]};
+   function guardedTranslationRescueCandidates(tgt='en'){
+     const srcLang=appLangToTopicLang(sourceShort()),targetLang=appLangToTopicLang(tgt);
+-    const key=`${contextualPackKey?.()||''}|${srcLang}|${targetLang}`;
++    const key=`LCR:${srcLang}:${targetLang}:${activeTopicPack?.id||''}:${activeTopicPack?.version||''}:${glossaryItems?.length||0}:${termRecognitionProfiles?.length||0}`;
+     if(guardedTranslationRescueCache.key===key)return guardedTranslationRescueCache.rows;
+     const rows=[];
+     try{
+-      for(const concept of activeTopicPack?.concepts||[]){
+-        const src=concept?.terms?.[srcLang],dst=concept?.terms?.[targetLang];
+-        const sourcePreferred=norm(src?.preferred||''),targetPreferred=norm(dst?.preferred||'');
+-        if(!sourcePreferred||!targetPreferred)continue;
+-        const conceptConfidence=Math.min(Number(concept?.confidence)||1,Number(concept?.relevance)||1);
+-        const variants=[targetPreferred,...(Array.isArray(dst?.aliases)?dst.aliases:[])].map(norm).filter(Boolean);
+-        for(const targetTerm of variants){
+-          if(targetLang==='en'&&!/[A-Za-z]/.test(targetTerm))continue;
+-          rows.push({text:targetTerm,targetPreferred,sourcePreferred,conceptId:concept.id??concept.conceptId??concept.concept_id??'',confidence:Math.max(.65,Math.min(1,conceptConfidence||.9)),phoneticKey:mixedPhoneticKey(targetTerm,targetLang)});
++      const pool=localRetrieverPool(srcLang,targetLang);
++      for(const c of pool){
++        if(targetLang==='en'&&!/[A-Za-z]/.test(c.text||''))continue;
++        for(const sourcePreferred of c.sourceHints||[]){
++          if(!sourcePreferred)continue;
++          rows.push({text:c.text,targetPreferred:c.text,sourcePreferred,conceptId:(c.conceptIds||[])[0]||'',confidence:Math.max(.65,Number(c.confidence)||.85),phoneticKey:c.phoneticKey||mixedPhoneticKey(c.text,targetLang),sources:c.sources||[]});
+         }
+       }
+     }catch{}
+@@ -9289,7 +9296,7 @@
+   }
+ 
+   function guardedTranslationRescue(text='',tgt='en'){
+-    const started=performance.now(),input=norm(text);if(!input||sourceShort()!=='ko'||appLangToTopicLang(tgt)!=='en'||!activeTopicPack)return {text:input,count:0,corrections:[]};
++    const started=performance.now(),input=norm(text);if(!input||sourceShort()!=='ko'||appLangToTopicLang(tgt)!=='en')return {text:input,count:0,corrections:[]};
+     const candidates=guardedTranslationRescueCandidates(tgt);if(!candidates.length)return {text:input,count:0,corrections:[]};
+     if(sessionCorrectionStats)sessionCorrectionStats.guardedTranslationRescueEvaluations=(Number(sessionCorrectionStats.guardedTranslationRescueEvaluations)||0)+1;
+     let checked=0;const recent=contextualRecentTurns().join(' '),evaluated=[];
+@@ -9308,15 +9315,17 @@
+         const stg=structuralTransliterationGuard(observed,c.text,span);
+         if(stg.state==='KEEP')continue;
+         const contextFit=guardedSourceCueFit(c.sourcePreferred,`${input} ${recent}`);
+-        // 의미/도메인 신호는 STG 바깥에서만 사용합니다. STG 자체는 Topic Pack 독립입니다.
+-        const rescueScore=clampNumber(.68*similarity+.18*contextFit+.10*stg.score+.04*(Number(c.confidence)||.8),0,1);
+-        scored.push({...c,similarity,contextFit,rescueScore,stg});
++        const sourceFit=pronunciationSimilarity(observed,c.sourcePreferred,'ko');
++        // Local Retriever의 source hint는 이미 알고 있는 한국어 표제어이므로 자유 후보 생성 없이 관측 span과 직접 비교합니다.
++        const rescueScore=clampNumber(.48*similarity+.24*sourceFit+.14*contextFit+.10*stg.score+.04*(Number(c.confidence)||.8),0,1);
++        scored.push({...c,similarity,sourceFit,contextFit,rescueScore,stg});
+       }
+       scored.sort((a,b)=>b.rescueScore-a.rescueScore||b.stg.score-a.stg.score);const best=scored[0],second=scored[1];if(!best)continue;
+-      const margin=best.rescueScore-(second?.rescueScore||0),phoneticMargin=best.similarity-(second?.similarity||0);
++      const margin=best.rescueScore-(second?.rescueScore||0),phoneticMargin=best.similarity-(second?.similarity||0),sourceMargin=(best.sourceFit||0)-(second?.sourceFit||0);
+       const structuralStrong=best.stg.state==='STRONG'&&best.stg.score>=.45&&best.stg.coverage>=.64&&best.stg.run>=.42;
+-      const evidenceSafe=(best.similarity>=.74&&phoneticMargin>=.075)||(best.similarity>=.62&&phoneticMargin>=.095&&best.contextFit>=.16)||(best.similarity>=.58&&phoneticMargin>=.045&&best.contextFit>=.52)||(best.similarity>=.56&&phoneticMargin>=.09&&best.contextFit>=.30)||(best.similarity>=.55&&phoneticMargin>=.05&&best.contextFit>=.38);
+-      if(!structuralStrong||!evidenceSafe)continue;
++      const trustedSourceStrong=(best.sources||[]).some(localRetrieverTrustedSource)&&(best.sourceFit||0)>=.78&&sourceMargin>=.08&&best.similarity>=.50&&best.stg.coverage>=.60;
++      const evidenceSafe=(best.similarity>=.74&&phoneticMargin>=.075)||(best.similarity>=.62&&phoneticMargin>=.095&&best.contextFit>=.16)||(best.similarity>=.58&&phoneticMargin>=.045&&best.contextFit>=.52)||(best.similarity>=.56&&phoneticMargin>=.09&&best.contextFit>=.30)||(best.similarity>=.55&&phoneticMargin>=.05&&best.contextFit>=.38)||trustedSourceStrong;
++      if(!(structuralStrong||trustedSourceStrong)||!evidenceSafe)continue;
+       evaluated.push({span,best,second,margin,phoneticMargin});
+     }
+ 
+@@ -9343,7 +9352,7 @@
+       const replTokens=original.split(/\s+/),lastInfo=stripKoreanPhoneticTailToken(replTokens[replTokens.length-1]);
+       const adjustedSuffix=harmonizeKoreanParticle(best.sourcePreferred,lastInfo.suffix||''),replacementText=best.sourcePreferred+adjustedSuffix;
+       output=output.slice(0,row.start)+replacementText+output.slice(row.end);
+-      corrections.push({observed:original,phoneticObserved:span.phoneticText||span.text,replacement:replacementText,sourcePreferred:best.sourcePreferred,targetTerm:best.targetPreferred||best.text,matchedTarget:best.text,conceptId:best.conceptId,similarity:Number(best.similarity.toFixed(4)),contextFit:Number(best.contextFit.toFixed(4)),score:Number(best.rescueScore.toFixed(4)),margin:Number(margin.toFixed(4)),phoneticMargin:Number(phoneticMargin.toFixed(4)),originalSuffix:lastInfo.suffix||'',adjustedSuffix,structuralGuard:best.stg});
++      corrections.push({observed:original,phoneticObserved:span.phoneticText||span.text,replacement:replacementText,sourcePreferred:best.sourcePreferred,targetTerm:best.targetPreferred||best.text,matchedTarget:best.text,conceptId:best.conceptId,sources:best.sources||[],similarity:Number(best.similarity.toFixed(4)),sourceFit:Number((best.sourceFit||0).toFixed(4)),contextFit:Number(best.contextFit.toFixed(4)),score:Number(best.rescueScore.toFixed(4)),margin:Number(margin.toFixed(4)),phoneticMargin:Number(phoneticMargin.toFixed(4)),originalSuffix:lastInfo.suffix||'',adjustedSuffix,structuralGuard:best.stg});
+     });
+     corrections.reverse();
+     const count=corrections.length,elapsed=Math.max(0,performance.now()-started);
+@@ -9535,6 +9544,115 @@
+   }
+ 
+ 
++
++  // ---------- v0.9.36 STOOM-LCR-1.0 · LOCAL CANDIDATE RETRIEVER ----------
++  // 후보를 발명하지 않습니다. 이미 알고 있는 로컬 지식에서만 검색합니다.
++  // PPTV/STG/Context는 검색된 후보를 검증/재순위할 수 있지만 후보 자체를 만들 수 없습니다.
++  const STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION='STOOM-LCR-1.0';
++  const STOOM_LOCAL_RETRIEVER_MAX_POOL=1200;
++  const STOOM_LOCAL_RETRIEVER_MAX_ROWS=20;
++  const STOOM_LOCAL_RETRIEVER_MIN_FIT=.42;
++  let localRetrieverPoolCache={key:'',rows:[]};
++
++  function localRetrieverTrustedSource(source=''){
++    return new Set(['topic-pack','topic-pack-alias','glossary-map','term-profile']).has(String(source||''));
++  }
++  function localRetrieverPool(primary='ko',target='en'){
++    const topicKey=activeTopicPack?`${activeTopicPack.id||''}:${activeTopicPack.version||''}:${activeTopicPack.concepts?.length||0}`:'none';
++    const glossaryKey=(glossaryItems||[]).map(x=>`${x.id||''}:${x.sourceLang||''}:${x.targetLang||''}:${x.source||''}:${x.target||''}`).join('~').slice(0,3000);
++    const termKey=(termRecognitionProfiles||[]).map(x=>`${x.id||''}:${x.language||''}:${x.canonical||''}:${x.updatedAt||''}`).join('~').slice(0,3000);
++    const key=[primary,target,topicKey,glossaryKey,termKey].join('|');
++    if(localRetrieverPoolCache.key===key)return localRetrieverPoolCache.rows;
++    const map=new Map();
++    const add=(text,{sourceHint='',confidence=.8,source='',conceptId=''}={})=>{
++      text=norm(text);sourceHint=norm(sourceHint);if(!text||!localRetrieverTrustedSource(source))return;
++      const k=normalizeCompareText(text,target);if(!k||k.length<2)return;
++      const prev=map.get(k)||{text,sourceHints:new Set(),confidence:0,sources:new Set(),conceptIds:new Set()};
++      if(sourceHint)prev.sourceHints.add(sourceHint);
++      prev.confidence=Math.max(prev.confidence,clampNumber(Number(confidence)||0,0,1));prev.sources.add(source);
++      if(conceptId)prev.conceptIds.add(String(conceptId));
++      map.set(k,prev);
++    };
++    try{
++      for(const concept of activeTopicPack?.concepts||[]){
++        const src=concept?.terms?.[primary],dst=concept?.terms?.[target];
++        const sourcePreferred=norm(src?.preferred||''),targetPreferred=norm(dst?.preferred||'');
++        if(!sourcePreferred||!targetPreferred)continue;
++        const conceptConfidence=Math.min(Number(concept?.confidence)||1,Number(concept?.relevance)||1);
++        add(targetPreferred,{sourceHint:sourcePreferred,confidence:Math.max(.88,conceptConfidence||.9),source:'topic-pack',conceptId:concept.id??concept.conceptId??concept.concept_id??''});
++        for(const alias of dst?.aliases||[])add(alias,{sourceHint:sourcePreferred,confidence:Math.max(.82,(conceptConfidence||.9)*.94),source:'topic-pack-alias',conceptId:concept.id??concept.conceptId??concept.concept_id??''});
++      }
++    }catch{}
++    try{
++      for(const g of glossaryItems||[]){
++        if(g?.sourceLang===primary&&g?.source&&g?.target&&(g.targetLang===target||g.targetLang==='*'))add(g.target,{sourceHint:g.source,confidence:.98,source:'glossary-map'});
++        if(g?.sourceLang===target&&g?.source)add(g.source,{confidence:.94,source:'glossary-map'});
++      }
++    }catch{}
++    try{
++      for(const p of termRecognitionProfiles||[]){
++        if(p?.language===target&&p?.canonical)add(p.canonical,{confidence:Math.max(.82,.72+.2*clampNumber(Number(p.priority)||0,0,1)),source:'term-profile'});
++      }
++    }catch{}
++    const rows=[...map.values()].map(r=>({text:r.text,sourceHints:[...r.sourceHints],confidence:r.confidence,sources:[...r.sources],conceptIds:[...r.conceptIds],phoneticKey:mixedPhoneticKey(r.text,target)}))
++      .sort((a,b)=>b.confidence-a.confidence||b.text.length-a.text.length).slice(0,STOOM_LOCAL_RETRIEVER_MAX_POOL);
++    localRetrieverPoolCache={key,rows};return rows;
++  }
++  function localRetrieverRecentFit(row={}){
++    const turns=(recentFinals||[]).slice(-3);if(!turns.length)return 0;
++    let best=0;
++    for(const t of turns)for(const hint of row.sourceHints||[])best=Math.max(best,textSimilarity(hint,t,sourceShort()));
++    return clampNumber(best,0,1);
++  }
++  function localRetrieverSourceFit(observed='',row={},primary='ko'){
++    let best=0,bestHint='';
++    for(const hint of row.sourceHints||[]){
++      const fit=primary==='ko'?pronunciationSimilarity(observed,hint,'ko'):textSimilarity(observed,hint,primary);
++      if(fit>best){best=fit;bestHint=hint;}
++    }
++    return {fit:clampNumber(best,0,1),hint:bestHint};
++  }
++  function evaluateLocalCandidateRetrieverShadow(raw='',alternatives=[],recognitionMeta={}){
++    const started=performance.now(),primary=sourceShort();
++    if(!raw||!['ko','en'].includes(primary))return null;
++    const target=primary==='ko'?'en':'ko',pool=localRetrieverPool(primary,target);
++    if(!pool.length){
++      if(traceDiagnosticState?.localCandidateRetriever){traceDiagnosticState.localCandidateRetriever.evaluations++;traceDiagnosticState.localCandidateRetriever.noLocalKnowledge++;}
++      traceEvent('diagnostic','local_candidate_retriever.shadow',{version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:0,rowCount:0,reason:'NO_LOCAL_KNOWLEDGE',candidateGeneration:false,runtimeMutation:false,criticalPath:false});
++      return {version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:0,shadowCandidates:[]};
++    }
++    const spans=mixedBridgeObservedSpans(raw,primary);if(!spans.length)return {version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:pool.length,shadowCandidates:[]};
++    let checked=0;const ranked=[];
++    for(const span of spans){
++      const observed=span.phoneticText||span.text;if(!observed)continue;
++      const shortlist=mixedBridgeCandidateShortlist(span,pool,target,primary,24);
++      for(const c of shortlist){
++        checked++;
++        const crossFit=primary==='ko'&&target==='en'?mixedCrossScriptSimilarity(observed,'ko',c.text,'en'):0;
++        const src=localRetrieverSourceFit(observed,c,primary),sourceFit=src.fit;
++        const retrievalFit=Math.max(sourceFit,crossFit);
++        if(retrievalFit<STOOM_LOCAL_RETRIEVER_MIN_FIT)continue;
++        const stg=primary==='ko'&&target==='en'?structuralTransliterationGuard(observed,c.text,span,{recordStats:false}):null;
++        if(stg?.hardKeep&&sourceFit<.70)continue;
++        if(stg&&(Number(stg.observedCoverage)<.56||Number(stg.candidateCoverage)<.56)&&sourceFit<.74)continue;
++        const nbest=mixedBridgeNBestSupport(c.text,target,alternatives),exactNBest=mixedBridgeExactNBestSupport(c.text,target,alternatives);
++        const recentFit=localRetrieverRecentFit(c),domain=clampNumber(Number(c.confidence)||0,0,1);
++        const retrievalScore=clampNumber(.46*retrievalFit+.22*sourceFit+.12*(stg?.score||0)+.10*domain+.06*nbest+.04*recentFit,0,1);
++        ranked.push({observed:span.text,phoneticObserved:observed,observedLang:primary,candidate:c.text,candidateLang:target,tailSuffix:span.tailSuffix||'',sourceHint:src.hint,sourceFit:Number(sourceFit.toFixed(4)),crossFit:Number(crossFit.toFixed(4)),retrievalFit:Number(retrievalFit.toFixed(4)),score:Number(retrievalScore.toFixed(4)),personal:null,domain:Number(domain.toFixed(4)),independentDomain:Number(domain.toFixed(4)),nbest:Number(nbest.toFixed(4)),exactNBest:Number(exactNBest.toFixed(4)),recentFit:Number(recentFit.toFixed(4)),sources:(c.sources||[]).filter(localRetrieverTrustedSource),conceptIds:c.conceptIds||[],trustedLocal:true});
++      }
++    }
++    ranked.sort((a,b)=>b.score-a.score||b.sourceFit-a.sourceFit||b.retrievalFit-a.retrievalFit);
++    const dedup=new Map();
++    for(const r of ranked){const k=`${String(r.observed||'').toLowerCase()}|${String(r.candidate||'').toLowerCase()}`;const prev=dedup.get(k);if(!prev||r.score>prev.score)dedup.set(k,r);}
++    const grouped=new Map();
++    for(const r of dedup.values()){const k=`${r.observedLang}|${String(r.observed||'').toLowerCase()}`;const arr=grouped.get(k)||[];if(arr.length<4){arr.push(r);grouped.set(k,arr);}}
++    const shadowCandidates=[...grouped.values()].flat().sort((a,b)=>b.score-a.score).slice(0,STOOM_LOCAL_RETRIEVER_MAX_ROWS);
++    const elapsed=Math.max(0,performance.now()-started),best=shadowCandidates[0]||null;
++    if(traceDiagnosticState?.localCandidateRetriever){const d=traceDiagnosticState.localCandidateRetriever;d.evaluations++;d.poolSizeMax=Math.max(d.poolSizeMax,pool.length);d.candidatesChecked+=checked;d.rowsProduced+=shadowCandidates.length;d.evalMsSum+=elapsed;d.evalMsCount++;d.evalMsMax=Math.max(d.evalMsMax,elapsed);if(!shadowCandidates.length)d.noMatch++;}
++    traceEvent('diagnostic','local_candidate_retriever.shadow',{version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:pool.length,candidatesChecked:checked,rowCount:shadowCandidates.length,best:best?{observed:best.observed,candidate:best.candidate,sourceHint:best.sourceHint,sourceFit:best.sourceFit,crossFit:best.crossFit,retrievalFit:best.retrievalFit,score:best.score,sources:best.sources}:null,candidateGeneration:false,pptvCanGenerateCandidate:false,contextCanGenerateCandidate:false,runtimeMutation:false,criticalPath:false,evaluationMs:Number(elapsed.toFixed(3))});
++    return {version:STOOM_LOCAL_CANDIDATE_RETRIEVER_VERSION,poolSize:pool.length,checked,shadowCandidates,best,evaluationMs:Number(elapsed.toFixed(3))};
++  }
++
+   // ---------- v0.9.35 STOOM-ABSTAIN-1.0 · SHADOW-ONLY EVIDENCE GATE ----------
+   // 이 모듈은 기존 보정 결과를 절대 변경하지 않습니다. 기존 엔진은 후보/증거만 제공하고,
+   // ABSTAIN Gate는 로컬 Trace에 WOULD_KEEP / WOULD_SELECT / WOULD_ABSTAIN만 기록합니다.
+@@ -9582,69 +9700,55 @@
+     }
+     return den>0?clampNumber(num/den,0,1):0;
+   }
+-  function abstainContextForCandidate(contextual=null,row={}){
+-    if(!contextual)return null;
+-    const sameCandidate=abstainUniqueKey(contextual.candidate,contextual.candidateLang||row.candidateLang||'en')===abstainUniqueKey(row.candidate,row.candidateLang||'en');
+-    const sameObserved=abstainUniqueKey(contextual.observed,contextual.observedLang||row.observedLang||'ko')===abstainUniqueKey(row.observed,row.observedLang||'ko');
+-    if(!sameCandidate||!sameObserved)return null;
+-    return clampNumber(Number(contextual.contextScore)||Number(contextual.rerankScore)||0,0,1);
+-  }
+-  function abstainCandidateRows(mixed=null,contextual=null){
+-    const raw=[];
+-    if(Array.isArray(mixed?.shadowCandidates))raw.push(...mixed.shadowCandidates);
+-    else if(mixed?.candidate)raw.push(mixed);
+-    if(contextual?.candidate){
+-      const hit=raw.find(x=>abstainUniqueKey(x.candidate,x.candidateLang||'en')===abstainUniqueKey(contextual.candidate,contextual.candidateLang||'en')&&abstainUniqueKey(x.observed,x.observedLang||'ko')===abstainUniqueKey(contextual.observed,contextual.observedLang||'ko'));
+-      if(!hit)raw.push({observed:contextual.observed,observedLang:contextual.observedLang||'ko',candidate:contextual.candidate,candidateLang:contextual.candidateLang||'en',score:Number(contextual.baseScore)||0,nbest:0,exactNBest:0,personal:0,domain:Number(contextual.topicFit)||0,independentDomain:Number(contextual.topicFit)||0,sources:['context-shadow']});
+-    }
++  function abstainContextForCandidate(row={}){
++    if(Number.isFinite(Number(row.recentFit)))return clampNumber(Number(row.recentFit),0,1);
++    return null;
++  }
++  function abstainCandidateRows(localRetriever=null){
++    const raw=Array.isArray(localRetriever?.shadowCandidates)?localRetriever.shadowCandidates:[];
+     const dedup=new Map();
+     for(const row of raw){
+       if(!row?.candidate||!row?.observed)continue;
++      const trusted=(row.sources||[]).length>0&&(row.sources||[]).every(localRetrieverTrustedSource);if(!trusted)continue;
+       const key=`${abstainUniqueKey(row.observed,row.observedLang||'ko')}|${abstainUniqueKey(row.candidate,row.candidateLang||'en')}`;
+       const prev=dedup.get(key);if(!prev||Number(row.score||0)>Number(prev.score||0))dedup.set(key,{...row});
+     }
+     return [...dedup.values()].sort((a,b)=>Number(b.score||0)-Number(a.score||0)).slice(0,STOOM_ABSTAIN_MAX_CANDIDATES);
+   }
+-  function abstainCandidateEvidence(row={},contextual=null,startedAt=performance.now()){
++  function abstainCandidateEvidence(row={},startedAt=performance.now()){
+     if(performance.now()-startedAt>STOOM_ABSTAIN_EVAL_BUDGET_MS)return {blocked:true,reason:'EVAL_BUDGET'};
+-    const observed=String(row.observed||''),candidate=String(row.candidate||'');
++    const observed=String(row.phoneticObserved||row.observed||''),candidate=String(row.candidate||'');
+     const observedLang=row.observedLang||'ko',candidateLang=row.candidateLang||'en';
+     if(!observed||!candidate)return {blocked:true,reason:'NO_CANDIDATE'};
+     if(abstainUniqueKey(observed,observedLang)===abstainUniqueKey(candidate,candidateLang))return {blocked:true,reason:'NO_DISCRIMINATION'};
++    if(!(row.sources||[]).length||(row.sources||[]).some(s=>!localRetrieverTrustedSource(s)))return {blocked:true,reason:'UNTRUSTED_CANDIDATE'};
+     if(abstainSourceIsTranslationOnly(row.sources))return {blocked:true,reason:'TRANSLATION_DERIVED_ONLY'};
+-
+     let stg=null;
+     if(observedLang==='ko'&&candidateLang==='en')stg=structuralTransliterationGuard(observed,candidate,{tailSuffix:row.tailSuffix||''},{recordStats:false});
+     if(stg?.syllables<=2)return {blocked:true,reason:'SHORT_NATIVE_GUARD',stg};
+-    if(stg&&(Number(stg.observedCoverage)<.64||Number(stg.candidateCoverage)<.64))return {blocked:true,reason:'LOW_COVERAGE',stg};
+-
++    const sourceFit=clampNumber(Number(row.sourceFit)||0,0,1);
++    if(stg&&(Number(stg.observedCoverage)<.64||Number(stg.candidateCoverage)<.64)&&sourceFit<.76)return {blocked:true,reason:'LOW_COVERAGE',stg};
+     const exactNBest=Number(row.exactNBest)||0,nbest=clampNumber(Number(row.nbest)||0,0,1);
+-    const repeatKey=`${candidateLang}|${candidate}|${observed}`;
+-    const repeatCount=Number(mixedBridgeSessionVariants?.get?.(repeatKey))||0;
+-    const repeatEvidence=clampNumber((repeatCount-1)/2,0,1);
+-    const recognition=clampNumber(.78*Math.max(exactNBest>0?1:0,nbest)+.22*repeatEvidence,0,1);
+-
++    const recognition=clampNumber(.82*Math.max(exactNBest>0?1:0,nbest)+.18*clampNumber(Number(row.recentFit)||0,0,1),0,1);
+     const stgEvidence=abstainStgEvidence(stg);
+-    const personal=Number.isFinite(Number(row.personal))?clampNumber(Number(row.personal),0,1):null;
+     let phonetic=null;
+-    if(Number.isFinite(stgEvidence)&&Number.isFinite(personal))phonetic=clampNumber(.65*stgEvidence+.35*personal,0,1);
++    if(Number.isFinite(stgEvidence)&&sourceFit>0)phonetic=clampNumber(.58*stgEvidence+.42*sourceFit,0,1);
+     else if(Number.isFinite(stgEvidence))phonetic=Math.min(.90,stgEvidence);
+-    else if(Number.isFinite(personal))phonetic=Math.min(.90,personal);
+-
+-    const independentDomain=clampNumber(Number(row.independentDomain)||0,0,1),domain=clampNumber(Number(row.domain)||0,0,1);
+-    const termPrior=Math.max(independentDomain,domain*.72);
+-    const context=abstainContextForCandidate(contextual,row);
+-    const acoustic=null; // Acoustic HDR은 Lab 검증 단계이며 LIVE runtime에는 아직 연결하지 않음.
++    else if(sourceFit>0)phonetic=Math.min(.90,sourceFit);
++    const termPrior=clampNumber(Number(row.independentDomain)||Number(row.domain)||0,0,1);
++    const context=abstainContextForCandidate(row),acoustic=null;
+     const signals={acoustic,recognition,phonetic,termPrior,context};
+     const score=abstainWeightedEvidence(signals);
+     const coreStrong=['acoustic','recognition','phonetic'].filter(k=>Number.isFinite(signals[k])&&signals[k]>=.65).length;
+     const independentGroups=['recognition','phonetic','termPrior','context'].filter(k=>Number.isFinite(signals[k])&&signals[k]>=.55).length;
+-    return {blocked:false,row,stg,signals,score:Number(score.toFixed(4)),coreStrong,independentGroups};
++    const trustedLocal=termPrior>=.90&&(row.sources||[]).every(localRetrieverTrustedSource);
++    const strictLocalEvidence=trustedLocal&&sourceFit>=.76&&Number.isFinite(phonetic)&&phonetic>=.74;
++    return {blocked:false,row,stg,signals,score:Number(score.toFixed(4)),coreStrong,independentGroups,trustedLocal,strictLocalEvidence,sourceFit};
+   }
+   function evaluateAbstainGateShadow(job={}){
+     const started=performance.now(),diag=traceDiagnosticState?.abstainGate;
+     if(diag)diag.evaluations++;
+-    const rows=abstainCandidateRows(job.mixedBridgeShadow,job.contextualReconstructionShadow);
++    const rows=abstainCandidateRows(job.localCandidateRetrieverShadow);
+     if(!rows.length){
+       if(diag)diag.wouldAbstain++;abstainDiagReason('NO_CANDIDATE');
+       traceEvent('diagnostic','abstain_gate.shadow',{version:STOOM_ABSTAIN_GATE_VERSION,mode:STOOM_ABSTAIN_GATE_MODE,decision:'WOULD_ABSTAIN',reason:'NO_CANDIDATE',runtimeMutation:false,criticalPath:false});return;
+@@ -9658,7 +9762,7 @@
+     const evaluated=[];let budgetHit=false;
+     for(const row of rows){
+       if(performance.now()-started>STOOM_ABSTAIN_EVAL_BUDGET_MS){budgetHit=true;break;}
+-      const ev=abstainCandidateEvidence(row,job.contextualReconstructionShadow,started);
++      const ev=abstainCandidateEvidence(row,started);
+       if(diag)diag.candidateEvaluations++;
+       if(ev.blocked){abstainDiagReason(ev.reason);continue;}
+       evaluated.push(ev);
+@@ -9677,8 +9781,14 @@
+     const stableTop1=String(job.nbestChoice?.rejectionReason||'').includes('stable-top1')||!!job.confidenceRoute?.skipNBest;
+     const minScore=stableTop1?.86:.78,minMargin=stableTop1?.15:.12;
+     let decision='WOULD_ABSTAIN',reason='LOW_SCORE';
+-    if(top.independentGroups<2||top.coreStrong<2){reason='INSUFFICIENT_INDEPENDENCE';}
+-    else if(!Number.isFinite(top.signals.phonetic)||top.signals.phonetic<.65){reason='PHONETIC_GUARD';}
++    const strictLocalRoute=top.strictLocalEvidence&&top.independentGroups>=2&&!stableTop1;
++    if(!Number.isFinite(top.signals.phonetic)||top.signals.phonetic<.65){reason='PHONETIC_GUARD';}
++    else if(!strictLocalRoute&&(top.independentGroups<2||top.coreStrong<2)){reason='INSUFFICIENT_INDEPENDENCE';}
++    else if(strictLocalRoute){
++      if(top.score<.76)reason='LOW_SCORE';
++      else if(margin<.16)reason='LOW_MARGIN';
++      else {decision='WOULD_SELECT';reason='TRUSTED_LOCAL_RESCUE';}
++    }
+     else if(top.score<minScore){reason=stableTop1?'STABLE_TOP1_GUARD':'LOW_SCORE';decision=stableTop1?'WOULD_KEEP':'WOULD_ABSTAIN';}
+     else if(margin<minMargin){reason='LOW_MARGIN';}
+     else {decision='WOULD_SELECT';reason='STRONG_INDEPENDENT_EVIDENCE';}
+@@ -9692,9 +9802,9 @@
+     if(diag){diag.evalMsSum+=elapsed;diag.evalMsCount++;diag.evalMsMax=Math.max(diag.evalMsMax,elapsed);}
+     traceEvent('diagnostic','abstain_gate.shadow',{
+       version:STOOM_ABSTAIN_GATE_VERSION,mode:STOOM_ABSTAIN_GATE_MODE,decision,reason,
+-      thresholds:{minScore,minMargin,minPhonetic:.65,minCoreStrong:2,minIndependentGroups:2,lowCoverage:.64},
++      thresholds:{minScore,minMargin,minPhonetic:.65,minCoreStrong:2,minIndependentGroups:2,lowCoverage:.64,trustedLocalSourceFit:.76,trustedLocalScore:.76,trustedLocalMargin:.16},
+       stableTop1,candidateCount:rows.length,evaluatedCount:evaluated.length,margin:Number(margin.toFixed(4)),
+-      top:{observed:top.row.observed,candidate:top.row.candidate,candidateLang:top.row.candidateLang||'en',score:top.score,coreStrong:top.coreStrong,independentGroups:top.independentGroups,signals:top.signals,stg:top.stg?{state:top.stg.state,score:top.stg.score,phonetic:top.stg.phonetic,coverage:top.stg.coverage,observedCoverage:top.stg.observedCoverage,candidateCoverage:top.stg.candidateCoverage,run:top.stg.run,hardKeepReason:top.stg.hardKeepReason}:null,sources:top.row.sources||[]},
++      top:{observed:top.row.observed,candidate:top.row.candidate,candidateLang:top.row.candidateLang||'en',sourceHint:top.row.sourceHint||'',sourceFit:top.sourceFit||0,trustedLocal:!!top.trustedLocal,strictLocalEvidence:!!top.strictLocalEvidence,score:top.score,coreStrong:top.coreStrong,independentGroups:top.independentGroups,signals:top.signals,stg:top.stg?{state:top.stg.state,score:top.stg.score,phonetic:top.stg.phonetic,coverage:top.stg.coverage,observedCoverage:top.stg.observedCoverage,candidateCoverage:top.stg.candidateCoverage,run:top.stg.run,hardKeepReason:top.stg.hardKeepReason}:null,sources:top.row.sources||[]},
+       second:second?{candidate:second.row.candidate,score:second.score,signals:second.signals}:null,
+       acousticHdrRuntimeConnected:false,translationDerivedCandidateAllowed:false,runtimeMutation:false,criticalPath:false,evaluationMs:Number(elapsed.toFixed(3))
+     });
+@@ -10042,6 +10152,7 @@
+       stablePrefix:{holdReasons:{},cancelReasons:{}},
+       interaction:{events:0,duplicateEvidence:0,synergy:0,suppression:0,neutral:0,pairs:{}},
+       abstainGate:{version:'STOOM-ABSTAIN-1.0',mode:'shadow-only',evaluations:0,candidateEvaluations:0,wouldSelect:0,wouldKeep:0,wouldAbstain:0,noCandidate:0,noDiscrimination:0,translationDerivedBlocked:0,shortNativeGuarded:0,lowCoverage:0,insufficientIndependence:0,lowScore:0,lowMargin:0,stableTop1Guarded:0,phoneticGuarded:0,budgetAbstains:0,deferredDropped:0,coreStrongSum:0,evalMsSum:0,evalMsCount:0,evalMsMax:0,reasons:{}},
++      localCandidateRetriever:{version:'STOOM-LCR-1.0',mode:'shadow-only',evaluations:0,poolSizeMax:0,candidatesChecked:0,rowsProduced:0,noMatch:0,noLocalKnowledge:0,evalMsSum:0,evalMsCount:0,evalMsMax:0},
+       diagnosticOverhead:{traceEventCount:0,traceEventMsSum:0,traceEventMsMax:0,provenanceEvents:0,interactionEvents:0},
+       decisionTraceSummary:{decisions:0,multiEngineDecisions:0,singleEngineDecisions:0,holds:0,conflicts:0,resolvedConflicts:0,unresolvedConflicts:0,shadowAblations:0,shadowChangedOutcome:0}
+     };
+@@ -10167,6 +10278,7 @@
+       decisionTraceSummary:decisionTraceSummarySnapshot(),
+       interactionDiagnostics:{...traceDiagnosticState.interaction,pairs:{...traceDiagnosticState.interaction.pairs}},
+       abstainGate:{...traceDiagnosticState.abstainGate,reasons:{...traceDiagnosticState.abstainGate.reasons},evalMsAvg:traceDiagnosticState.abstainGate.evalMsCount?Number((traceDiagnosticState.abstainGate.evalMsSum/traceDiagnosticState.abstainGate.evalMsCount).toFixed(4)):0},
++      localCandidateRetriever:{...traceDiagnosticState.localCandidateRetriever,evalMsAvg:traceDiagnosticState.localCandidateRetriever.evalMsCount?Number((traceDiagnosticState.localCandidateRetriever.evalMsSum/traceDiagnosticState.localCandidateRetriever.evalMsCount).toFixed(4)):0},
+       stablePrefixDiagnostics:{holdReasons:{...traceDiagnosticState.stablePrefix.holdReasons},cancelReasons:{...traceDiagnosticState.stablePrefix.cancelReasons}},
+       diagnosticOverhead:{...traceDiagnosticState.diagnosticOverhead,traceEventMsAvg:traceDiagnosticState.diagnosticOverhead.traceEventCount?Number((traceDiagnosticState.diagnosticOverhead.traceEventMsSum/traceDiagnosticState.diagnosticOverhead.traceEventCount).toFixed(4)):0},
+       incrementalPipeline:{...incrementalPerfCounters,normalizeCacheSize:compareNormalizeCache.size,lastInterimRelation:incrementalInterimState?.relation||'',lastStablePrefix:incrementalInterimState?.stablePrefix||'',stablePrefixPreviewCardId:stablePrefixTranslationState?.lastCardId||''}
+@@ -10333,7 +10445,7 @@
+     return {
+       schema:TRACE_LOG_SCHEMA,appVersion:APP_VERSION,sessionId:traceSessionId||null,startedAt:traceStartedAtISO||null,savedAt:new Date().toISOString(),
+       notice:'원음/PCM은 포함하지 않습니다. STT 인식문과 번역문은 오류 분석을 위해 포함됩니다. 엔진 기여·Provenance·Interaction·Shadow·Incremental 진단은 이 로컬 Trace JSON에만 포함되며 진단 heartbeat/Worker/D1 payload에는 추가하지 않습니다.',
+-      diagnosticMeta:{observerOnly:true,decisionSideEffect:false,evaluationMode:'runtime',baselineVersion:'0.9.33',engineDiagnosticsVersion:'2.7',provenanceVersion:'STOOM-PROV-1.0',shadowDiagnosticsEnabled:true,ablationEnabled:false,mixedBridgeMode:'shadow-only',contextualReconstructionMode:'shadow-only',guardedTranslationRescueMode:'active-translation-only',structuralTransliterationGuard:'STOOM-STG-1.0',abstainGate:'STOOM-ABSTAIN-1.0-shadow',acousticHdrRuntimeConnected:false},
++      diagnosticMeta:{observerOnly:true,decisionSideEffect:false,evaluationMode:'runtime',baselineVersion:'0.9.33',engineDiagnosticsVersion:'2.7',provenanceVersion:'STOOM-PROV-1.0',shadowDiagnosticsEnabled:true,ablationEnabled:false,mixedBridgeMode:'diagnostic-only-not-candidate-source',contextualReconstructionMode:'diagnostic-only-not-candidate-source',guardedTranslationRescueMode:'active-translation-only',structuralTransliterationGuard:'STOOM-STG-1.0',abstainGate:'STOOM-ABSTAIN-1.0-shadow',localCandidateRetriever:'STOOM-LCR-1.0-shadow',candidateGenerationPolicy:'trusted-local-retrieval-only',acousticHdrRuntimeConnected:false},
+       provenanceRegistry:STOOM_PROVENANCE_REGISTRY,
+       environment:{
+         sourceLang:sourceSelect?.value||'',targets:selectedTargets?.()||[],speedMode,foregroundGuardMode,
+@@ -12428,8 +12540,8 @@
+     if (!tgt) return '';
+     const src = sourceShort();
+ 
+-    // v0.9.32: Endpoint Interim을 포함한 모든 실제 번역 입력에서 STG를 통과한 한글 음차 전문용어를
+-    // Topic Pack의 원문 정식 용어로 먼저 복원합니다. 화면의 원문 STT 자체는 변경하지 않습니다.
++    // v0.9.36: Endpoint Interim을 포함한 실제 번역 입력에서 trusted local candidate(Topic Pack/강의 용어집)를
++    // STG + source-hint guard로 검증해 원문 정식 용어로만 복원합니다. 화면의 원문 STT 자체는 변경하지 않습니다.
+     const rescued = guardedTranslationRescue(text, tgt);
+     const translationSource = rescued.text || text;
+ 
+@@ -13607,10 +13719,11 @@
+       return;
+     }
+ 
+-    // v0.9.28~0.9.30: Mixed Bridge와 Contextual Reconstruction은 observer-only입니다.
+-    // 실제 STT 문장·번역·TTS에는 절대 반영하지 않고 활성화 전 Trace 정밀도만 수집합니다.
+-    const mixedBridgeShadow=evaluateMixedLanguageBridgeShadow(rawText,alternatives,recognitionMeta);
+-    const contextualReconstructionShadow=evaluateContextualReconstructionShadow(rawText,alternatives,recognitionMeta,mixedBridgeShadow);
++    // v0.9.36: 후보 공급자는 Local Candidate Retriever 하나로 단일화합니다.
++    // Mixed Bridge/Contextual Reconstruction은 decision path에서 분리해 엔진 연쇄 증폭을 차단합니다.
++    const mixedBridgeShadow=null;
++    const contextualReconstructionShadow=null;
++    const localCandidateRetrieverShadow=evaluateLocalCandidateRetrieverShadow(rawText,alternatives,recognitionMeta);
+ 
+     let termCorrection = {text:rawText,count:0,corrections:[]};
+     try {
+@@ -13647,13 +13760,13 @@
+     }
+     const correctedText = norm(localCorrection.text || topicCorrection.text || personalCorrection.text || rawText);
+     scheduleAbstainGateShadow({
+-      rawText,originalRawText,alternatives,recognitionMeta,confidenceRoute,nbestChoice,mixedBridgeShadow,contextualReconstructionShadow,
++      rawText,originalRawText,alternatives,recognitionMeta,confidenceRoute,nbestChoice,localCandidateRetrieverShadow,mixedBridgeShadow,contextualReconstructionShadow,
+       // Existing active correction outputs are snapshot context only. ABSTAIN shadow never mutates them.
+       activeCorrectionSnapshot:{termCount:Number(termCorrection.count)||0,personalCount:Number(personalCorrection.count)||0,topicCount:Number(topicCorrection.count)||0,localCount:Number(localCorrection.count)||0,finalCandidate:correctedText}
+     });
+     const questionAdjusted=applyQuestionProsodyPunctuation(correctedText,{stage:'chrome-final'});
+     const text=questionAdjusted.text;
+-    traceEvent('process','stt.final.corrected',{raw:rawText,top1:originalRawText,nbestChanged:!!nbestChoice.changed,termText:termCorrection.text,termCount:termCorrection.count,personalText:personalCorrection.text,personalCount:personalCorrection.count,topicText:topicCorrection.text,topicCount:topicCorrection.count,localText:localCorrection.text,localCount:localCorrection.count,localCorrections:localCorrection.corrections,mixedBridgeShadow:mixedBridgeShadow?{candidate:mixedBridgeShadow.candidate,score:mixedBridgeShadow.score,wouldRestore:mixedBridgeShadow.wouldRestore,applied:false}:null,contextualReconstructionShadow:contextualReconstructionShadow?{observed:contextualReconstructionShadow.observed,candidate:contextualReconstructionShadow.candidate,baseScore:contextualReconstructionShadow.score,rerankScore:contextualReconstructionShadow.rerankScore,contextScore:contextualReconstructionShadow.contextScore,margin:contextualReconstructionShadow.margin,evidenceRoots:contextualReconstructionShadow.evidenceRoots,wouldRestore:contextualReconstructionShadow.wouldRestore,applied:false}:null,prosodyQuestion:questionAdjusted.applied,finalText:text});
++    traceEvent('process','stt.final.corrected',{raw:rawText,top1:originalRawText,nbestChanged:!!nbestChoice.changed,termText:termCorrection.text,termCount:termCorrection.count,personalText:personalCorrection.text,personalCount:personalCorrection.count,topicText:topicCorrection.text,topicCount:topicCorrection.count,localText:localCorrection.text,localCount:localCorrection.count,localCorrections:localCorrection.corrections,localCandidateRetrieverShadow:localCandidateRetrieverShadow?{poolSize:localCandidateRetrieverShadow.poolSize,rowCount:localCandidateRetrieverShadow.shadowCandidates?.length||0,best:localCandidateRetrieverShadow.best?{observed:localCandidateRetrieverShadow.best.observed,candidate:localCandidateRetrieverShadow.best.candidate,sourceHint:localCandidateRetrieverShadow.best.sourceHint,score:localCandidateRetrieverShadow.best.score,sources:localCandidateRetrieverShadow.best.sources}:null}:null,mixedBridgeShadow:mixedBridgeShadow?{candidate:mixedBridgeShadow.candidate,score:mixedBridgeShadow.score,wouldRestore:mixedBridgeShadow.wouldRestore,applied:false}:null,contextualReconstructionShadow:contextualReconstructionShadow?{observed:contextualReconstructionShadow.observed,candidate:contextualReconstructionShadow.candidate,baseScore:contextualReconstructionShadow.score,rerankScore:contextualReconstructionShadow.rerankScore,contextScore:contextualReconstructionShadow.contextScore,margin:contextualReconstructionShadow.margin,evidenceRoots:contextualReconstructionShadow.evidenceRoots,wouldRestore:contextualReconstructionShadow.wouldRestore,applied:false}:null,prosodyQuestion:questionAdjusted.applied,finalText:text});
+     if (!text) return;
+ 
+     if (termCorrection.count > 0 || personalCorrection.count > 0 || topicCorrection.count > 0 || localCorrection.count > 0) {

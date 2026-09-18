@@ -1,0 +1,60 @@
+{
+  "suite": "STOOM v0.9.35 ABSTAIN Shadow Candidate · v0.9.33 Stability Freeze",
+  "total": 13,
+  "pass": 13,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "version 0.9.35",
+      "ok": true
+    },
+    {
+      "name": "inline JS parses",
+      "ok": true
+    },
+    {
+      "name": "old acoustic-only 1.976s false restart is suppressed",
+      "ok": true
+    },
+    {
+      "name": "old Chrome-speech 3.060s false restart is suppressed",
+      "ok": true
+    },
+    {
+      "name": "old Chrome-speech 2.880s false restart is suppressed",
+      "ok": true
+    },
+    {
+      "name": "real post-result 4.3s stall can still recover",
+      "ok": true
+    },
+    {
+      "name": "growing interim waits for Final",
+      "ok": true
+    },
+    {
+      "name": "interim fallback eventually commits",
+      "ok": true
+    },
+    {
+      "name": "same recognition result owns one card",
+      "ok": true
+    },
+    {
+      "name": "different recognition result stays separate",
+      "ok": true
+    },
+    {
+      "name": "stable top1 blocks weak personal-only reversal",
+      "ok": true
+    },
+    {
+      "name": "independent term evidence can bypass personal-only guard",
+      "ok": true
+    },
+    {
+      "name": "required runtime hooks present",
+      "ok": true
+    }
+  ]
+}

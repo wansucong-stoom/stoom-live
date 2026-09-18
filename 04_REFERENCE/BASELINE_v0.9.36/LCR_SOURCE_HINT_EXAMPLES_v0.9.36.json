@@ -1,0 +1,41 @@
+{
+  "suite": "LCR source-hint synthetic examples",
+  "thresholds": {
+    "retriever": 0.42,
+    "trustedLocal": 0.76,
+    "translationRescue": 0.78
+  },
+  "total": 4,
+  "pass": 4,
+  "fail": 0,
+  "results": [
+    {
+      "observed": "프로젝트 페이스트 러닝",
+      "canonical": "프로젝트 베이스드 러닝",
+      "expect": "STRONG_SOURCE_HINT",
+      "score": 0.9091,
+      "ok": true
+    },
+    {
+      "observed": "포메이트 프로세스먼트",
+      "canonical": "포메이티브 어세스먼트",
+      "expect": "STRONG_SOURCE_HINT",
+      "score": 0.8095,
+      "ok": true
+    },
+    {
+      "observed": "껄떡대리점",
+      "canonical": "컨스트럭티비즘",
+      "expect": "ABSTAIN_SOURCE_HINT",
+      "score": 0.3529,
+      "ok": true
+    },
+    {
+      "observed": "비교해",
+      "canonical": "브라이트",
+      "expect": "REJECT_UNRELATED",
+      "score": 0.125,
+      "ok": true
+    }
+  ]
+}

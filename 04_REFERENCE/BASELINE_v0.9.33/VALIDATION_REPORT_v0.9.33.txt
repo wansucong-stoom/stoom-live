@@ -1,0 +1,72 @@
+STOOM LIVE TRANSLATOR v0.9.33 — RECOGNITION STABILITY FIX
+Release date: 2026-09-14
+
+DEPLOYMENT
+- Pages: CHANGE REQUIRED
+- Worker: NO CHANGE (keep current v0.10.19)
+- D1: NO CHANGE
+
+WHY THIS RELEASE
+The v0.9.32 runtime trace showed that Chrome STT itself produced all 6 expected Finals, but STOOM restarted recognition 3 times before/around normal speech and committed Interim-only snapshots 13 times. Six spoken test sentences became eight cards. One N-best decision also replaced a correct stable Top-1 phrase ("마지막에") with an incorrect personal-vector alternative ("마지막의") on only ~0.033 vector margin.
+
+CLIENT FIXES
+1. Adaptive STT Watchdog
+   - Stall threshold raised from 1.9s to 4.2s after STT results.
+   - Before the first result, Chrome speechstart path receives 5.2s grace.
+   - Acoustic-only evidence without Chrome speechstart requires 8.5s before recovery.
+   - Voice-frame requirement raised 3 -> 6.
+   - Restart cooldown raised 3.2s -> 5.2s.
+   - Recognition start timeout raised 2.6s -> 5.0s.
+   - Watchdog restart resets stale browserSpeechActive state.
+
+2. Final-first Interim Commit Guard
+   - Interim-only endpoint snapshots do not immediately become permanent cards.
+   - They wait up to 2.6s for Chrome Final while the same recognition speech remains active.
+   - If the same utterance re-enters during COMMIT_PENDING, the segment resumes instead of committing a partial card and opening a new segment.
+   - Pause/end/guard-off/confirmed other-speaker paths still flush immediately.
+
+3. Recognition Ownership Revision
+   - Same recognitionGeneration + eventResultIndex is treated as the same utterance ownership for up to 6.5s.
+   - A later cumulative Final revises the existing card even if an acoustic endpoint temporarily split the segment.
+
+4. Main Speaker Text Continuity
+   - During an already-active segment, recent growing Chrome Interim text prevents a marginal speaker-score dip from becoming an immediate 'other' boundary.
+   - Recent text continuity can hold lastMainAt on uncertain frames; this does not open a new speaker segment from WAIT_MAIN.
+
+5. N-best Stable Top-1 Guard
+   - If the Interim reference exactly equals Chrome Top-1 and the alternative has no strong term/confusion evidence, a personal-pronunciation-only override with vector margin < 0.08 is held.
+   - This blocks the observed "마지막에" -> "마지막의" false intervention while preserving independent term/context evidence overrides.
+
+TRACE-ONLY DIAGNOSTICS ADDED
+- interimCommitDeferred
+- interimReentryResumed
+- recognitionOwnershipRevisions
+- nbestStableTop1Guards
+- watchdogDeferredNoChromeSpeech / watchdogDeferredWarmup fields reserved in session stats
+- events: interim_only.commit_deferred, interim_only.reentry_resumed, merge.recognition_owned, speaker.text_continuity_hold
+These remain local STOOM-TRACE diagnostics and do not alter Worker/D1 payloads.
+
+STATIC / SYNTHETIC VALIDATION
+- Inline JavaScript parse check: PASS
+- Recognition stability unit checks: 13/13 PASS
+  * all three v0.9.32 false-restart timing samples are suppressed by the new thresholds
+  * a genuine post-result 4.3s stall still qualifies for recovery
+  * growing Interim waits for Final but still has bounded fallback
+  * same recognition result owns one card
+  * stable Top-1 blocks the observed weak personal-only reversal
+- v0.9.32 Structural Transliteration Guard regression: 9/9 PASS
+- Release metadata: v0.9.33
+- Homepage/update history: v0.9.33
+- Worker/D1 contract: unchanged
+
+IMPORTANT LIMITATION
+This build cannot replay the user's microphone/Chrome SpeechRecognition stream in the build environment. The fix is based on the exact v0.9.32 trace failure paths and static/synthetic regression tests. Repeat the same 6-sentence recognition-stability test in Chrome and export STOOM-TRACE-1.7. Primary runtime targets:
+- finals ~= 6
+- cards ~= 6 (not 8)
+- restartCount ideally 0; a genuine recovery may be 1, but repeated 2–3 rapid restarts should disappear
+- stableInterimFallbacks substantially lower than 13
+- recognitionGeneration ideally 1–2
+- nbestStableTop1Guards >= 1 if the same weak personal-only reversal is proposed
+
+STG NOTE
+v0.9.33 intentionally fixes recognition stability first. The previously observed Topic Pack-null STG evaluation path (structuralTransliterationEvaluations=0) is not activated by this release and remains a separate follow-up item after STT stability is confirmed.

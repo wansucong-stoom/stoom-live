@@ -1,0 +1,306 @@
+--- /mnt/data/STOOM_v0.9.33_RECOGNITION_STABILITY_FIX_FULL_PACKAGE/01_PAGES/STOOM_Live_Translator_latest.html	2026-09-14 14:22:33.768395068 +0000
++++ /mnt/data/STOOM_v0.9.35_ABSTAIN_GATE_SHADOW_CANDIDATE_FULL_PACKAGE/01_PAGES/STOOM_Live_Translator_latest.html	2026-09-14 15:15:05.533192744 +0000
+@@ -2,18 +2,27 @@
+ <!-- STOOM_RELEASE
+ {
+   "product": "STOOM LIVE TRANSLATOR",
+-  "version": "0.9.33",
+-  "released": "2026-09-14",
++  "version": "0.9.35",
++  "released": "2026-09-15",
+   "info": "https://trans.stoom.win/",
+   "notes": [
+-    "Recognition Stability Fix: Chrome STT가 아직 정상 발화 중일 때 Watchdog이 2~3초 만에 반복 재시작하던 조건을 Browser speech state·초기 warm-up·adaptive stall threshold로 완화",
+-    "Final-first Endpoint Guard: Final이 없는 성장 중 Interim은 즉시 영구 카드로 확정하지 않고 짧게 보류하며 같은 발화의 재진입은 기존 segment로 복귀",
+-    "Recognition Ownership Revision: 같은 recognition generation/result index의 누적 Final은 문자열 차이와 무관하게 기존 카드 revision으로 귀속해 1문장 2카드 분할을 억제",
+-    "Speaker Continuity Guard: 이미 진행 중인 발화에서 최근 STT 텍스트가 계속 성장하면 일시적인 uncertain/낮은 speaker score를 문장 종료 근거로 사용하지 않음",
+-    "N-best Stable Top-1 Guard: Interim이 Chrome Top-1과 정확히 수렴한 상태에서는 개인 발음 벡터의 작은 margin만으로 조사·어미를 역전하지 않음"
++    "ABSTAIN Gate 1.0 Shadow: N-best·Mixed Bridge·PPTV·STG·Context/Topic 근거를 독립 evidence group으로 묶어 KEEP/SELECT/ABSTAIN을 관측하되 실제 STT·번역·TTS에는 반영하지 않음",
++    "Evidence Separation: 후보 생성·음향/음성구조 검증·문맥 prior·최종 판단의 역할을 분리하고 번역 결과 단독 후보, 짧은 일반어, 낮은 coverage, 낮은 margin은 자동 SELECT 금지",
++    "Deferred Observer: ABSTAIN 계산을 requestIdleCallback/지연 task로 실행하고 최대 8후보·6ms budget·latest-only 대기열로 제한해 실시간 STT/Endpoint/번역 critical path를 보호",
++    "Regression Freeze: v0.9.33의 Watchdog·Main Speaker·Endpoint·Recognition Ownership·Stable Top-1 경로와 임계값은 변경하지 않음"
+   ],
+   "history": [
+     {
++      "version": "0.9.35",
++      "released": "2026-09-15",
++      "notes": [
++        "STOOM-ABSTAIN-1.0 Shadow-only evidence gate 추가",
++        "N-best/Recognition · STG/PPTV · Topic prior · Context를 독립 evidence group으로 분리",
++        "NO_CANDIDATE/NO_DISCRIMINATION/LOW_COVERAGE/LOW_MARGIN/STABLE_TOP1 등 보수적 hard gate 적용",
++        "idle/deferred observer와 6ms budget으로 기존 실시간 인식·번역 경로 보호"
++      ]
++    },
++    {
+       "version": "0.9.33",
+       "released": "2026-09-14",
+       "notes": [
+@@ -3330,7 +3339,7 @@
+   // Remote deployment contains only:
+   //   1) index.html
+   //   2) STOOM_Live_Translator_latest.html
+-  const APP_VERSION = '0.9.33';
++  const APP_VERSION = '0.9.35';
+   const REMOTE_LATEST_HTML = 'https://trans.stoom.win/STOOM_Live_Translator_latest.html';
+   const UPDATE_INFO_URL = 'https://trans.stoom.win/';
+   const UPDATE_CHECK_TIMEOUT_MS = 5000;
+@@ -9131,7 +9140,7 @@
+         if(contrastGuard){personal=0;personalReliability=0;backoffDepth='abstain';matchedVariant='';}
+         let score=sameScript?clampNumber(.56*similarity+.19*personal+.17*domain+.08*nbest,0,1):clampNumber(.76*similarity+.20*domain+.04*nbest+.08*personal,0,1);
+         if(contrastGuard)score=Math.min(score,Number(bridge.safety?.minShadowConfidence||.72)-.005);
+-        const row={observed:span.text,observedLang:span.lang,candidate:c.text,candidateLang:target,score:Number(score.toFixed(4)),similarity:Number(similarity.toFixed(4)),directSimilarity:Number(directSimilarity.toFixed(4)),variantSimilarity:Number((variantEv.similarity||0).toFixed(4)),matchedVariant,personal:Number(personal.toFixed(4)),personalReliability:Number(personalReliability.toFixed(4)),backoffDepth,domain:Number(domain.toFixed(4)),independentDomain:Number(independentDomain.toFixed(4)),nbest:Number(nbest.toFixed(4)),exactNBest:Number(exactNBest.toFixed(4)),contrastPair,contrastGuard,independentSupport,foreignScript:!!span.foreignScript,crossScript:!sameScript,sources:c.sources||[]};
++        const row={observed:span.text,observedLang:span.lang,candidate:c.text,candidateLang:target,tailSuffix:span.tailSuffix||'',score:Number(score.toFixed(4)),similarity:Number(similarity.toFixed(4)),directSimilarity:Number(directSimilarity.toFixed(4)),variantSimilarity:Number((variantEv.similarity||0).toFixed(4)),matchedVariant,personal:Number(personal.toFixed(4)),personalReliability:Number(personalReliability.toFixed(4)),backoffDepth,domain:Number(domain.toFixed(4)),independentDomain:Number(independentDomain.toFixed(4)),nbest:Number(nbest.toFixed(4)),exactNBest:Number(exactNBest.toFixed(4)),contrastPair,contrastGuard,independentSupport,foreignScript:!!span.foreignScript,crossScript:!sameScript,sources:c.sources||[]};
+         if(!best||row.score>best.score)best=row;
+         rankedRows.push(row);
+         if(rankedRows.length>40){rankedRows.sort((a,b)=>b.score-a.score);rankedRows.length=24;}
+@@ -9252,7 +9261,7 @@
+     const lengthScore=clampNumber((syllables-2)/6,0,1),multiToken=clampNumber((tokens-1)/2,0,1),candidateMulti=clampNumber((candidateTokens-1)/2,0,1);
+     return clampNumber(.65*lengthScore+.20*multiToken+.15*candidateMulti,0,1);
+   }
+-  function structuralTransliterationGuard(observed='',candidate='',span={}){
++  function structuralTransliterationGuard(observed='',candidate='',span={},options={}){
+     const phonetic=mixedCrossScriptSimilarity(observed,'ko',candidate,'en');
+     const coverage=stgPhoneticCoverage(observed,candidate),variation=stgInterimVariation(),pattern=stgPatternFit(observed,candidate,coverage),boundary=stgBoundaryFit(span),run=stgRunContinuity(observed,candidate);
+     const nativePenalty=clampNumber(.50*(1-variation)+.30*(1-pattern)+.20*(1-run),0,1);
+@@ -9264,7 +9273,7 @@
+     else if(coverage.observedCoverage<.62||coverage.candidateCoverage<.62)hardKeepReason='coverage';
+     else if(tokens===1&&syllables<=3&&variation<.12&&pattern<.78)hardKeepReason='stable-short-native-like';
+     const state=hardKeepReason?'KEEP':score>=.45?'STRONG':score>=.39?'AMBIGUOUS':'KEEP';
+-    if(sessionCorrectionStats){
++    if(options?.recordStats!==false&&sessionCorrectionStats){
+       sessionCorrectionStats.structuralTransliterationEvaluations=(Number(sessionCorrectionStats.structuralTransliterationEvaluations)||0)+1;
+       if(state==='STRONG')sessionCorrectionStats.structuralTransliterationStrong=(Number(sessionCorrectionStats.structuralTransliterationStrong)||0)+1;
+       else if(state==='AMBIGUOUS')sessionCorrectionStats.structuralTransliterationAmbiguous=(Number(sessionCorrectionStats.structuralTransliterationAmbiguous)||0)+1;
+@@ -9525,6 +9534,186 @@
+     return globalBest?{...globalBest,evaluationMs:Number(elapsed.toFixed(3))}:null;
+   }
+ 
++
++  // ---------- v0.9.35 STOOM-ABSTAIN-1.0 · SHADOW-ONLY EVIDENCE GATE ----------
++  // 이 모듈은 기존 보정 결과를 절대 변경하지 않습니다. 기존 엔진은 후보/증거만 제공하고,
++  // ABSTAIN Gate는 로컬 Trace에 WOULD_KEEP / WOULD_SELECT / WOULD_ABSTAIN만 기록합니다.
++  // 실시간 STT/Endpoint/번역 critical path 보호를 위해 deferred observer로만 실행합니다.
++  const STOOM_ABSTAIN_GATE_VERSION='STOOM-ABSTAIN-1.0';
++  const STOOM_ABSTAIN_GATE_MODE='shadow-only';
++  const STOOM_ABSTAIN_MAX_CANDIDATES=8;
++  const STOOM_ABSTAIN_EVAL_BUDGET_MS=6;
++  const STOOM_ABSTAIN_WEIGHTS=Object.freeze({acoustic:.30,recognition:.25,phonetic:.20,termPrior:.15,context:.10});
++  let abstainShadowPendingJob=null;
++  let abstainShadowJobScheduled=false;
++
++  function abstainDiagReason(reason='UNKNOWN'){
++    const a=traceDiagnosticState?.abstainGate;if(!a)return;
++    const r=String(reason||'UNKNOWN');a.reasons[r]=(a.reasons[r]||0)+1;
++    if(r==='NO_CANDIDATE')a.noCandidate++;
++    else if(r==='NO_DISCRIMINATION')a.noDiscrimination++;
++    else if(r==='TRANSLATION_DERIVED_ONLY')a.translationDerivedBlocked++;
++    else if(r==='SHORT_NATIVE_GUARD')a.shortNativeGuarded++;
++    else if(r==='LOW_COVERAGE')a.lowCoverage++;
++    else if(r==='INSUFFICIENT_INDEPENDENCE')a.insufficientIndependence++;
++    else if(r==='LOW_SCORE')a.lowScore++;
++    else if(r==='LOW_MARGIN')a.lowMargin++;
++    else if(r==='STABLE_TOP1_GUARD')a.stableTop1Guarded++;
++    else if(r==='PHONETIC_GUARD')a.phoneticGuarded++;
++    else if(r==='EVAL_BUDGET')a.budgetAbstains++;
++  }
++  function abstainUniqueKey(text='',lang='en'){return normalizeCompareText(String(text||''),lang)||String(text||'').trim().toLowerCase();}
++  function abstainSourceIsTranslationOnly(sources=[]){
++    const rows=(Array.isArray(sources)?sources:[sources]).map(x=>String(x||'').toLowerCase()).filter(Boolean);
++    return rows.length>0&&rows.every(x=>x.includes('translat'));
++  }
++  function abstainStgEvidence(stg=null){
++    if(!stg)return null;
++    const sc=clampNumber(Number(stg.score)||0,0,1);
++    if(stg.state==='STRONG')return clampNumber(.72+.28*clampNumber((sc-.45)/.30,0,1),0,1);
++    if(stg.state==='AMBIGUOUS')return clampNumber(.50+.18*clampNumber((sc-.39)/.06,0,1),0,1);
++    return clampNumber(.12+.28*Math.max(Number(stg.phonetic)||0,Number(stg.coverage)||0),0,.44);
++  }
++  function abstainWeightedEvidence(signals={}){
++    let num=0,den=0;
++    for(const [k,w] of Object.entries(STOOM_ABSTAIN_WEIGHTS)){
++      const v=signals[k];if(!Number.isFinite(v))continue;
++      num+=w*clampNumber(v,0,1);den+=w;
++    }
++    return den>0?clampNumber(num/den,0,1):0;
++  }
++  function abstainContextForCandidate(contextual=null,row={}){
++    if(!contextual)return null;
++    const sameCandidate=abstainUniqueKey(contextual.candidate,contextual.candidateLang||row.candidateLang||'en')===abstainUniqueKey(row.candidate,row.candidateLang||'en');
++    const sameObserved=abstainUniqueKey(contextual.observed,contextual.observedLang||row.observedLang||'ko')===abstainUniqueKey(row.observed,row.observedLang||'ko');
++    if(!sameCandidate||!sameObserved)return null;
++    return clampNumber(Number(contextual.contextScore)||Number(contextual.rerankScore)||0,0,1);
++  }
++  function abstainCandidateRows(mixed=null,contextual=null){
++    const raw=[];
++    if(Array.isArray(mixed?.shadowCandidates))raw.push(...mixed.shadowCandidates);
++    else if(mixed?.candidate)raw.push(mixed);
++    if(contextual?.candidate){
++      const hit=raw.find(x=>abstainUniqueKey(x.candidate,x.candidateLang||'en')===abstainUniqueKey(contextual.candidate,contextual.candidateLang||'en')&&abstainUniqueKey(x.observed,x.observedLang||'ko')===abstainUniqueKey(contextual.observed,contextual.observedLang||'ko'));
++      if(!hit)raw.push({observed:contextual.observed,observedLang:contextual.observedLang||'ko',candidate:contextual.candidate,candidateLang:contextual.candidateLang||'en',score:Number(contextual.baseScore)||0,nbest:0,exactNBest:0,personal:0,domain:Number(contextual.topicFit)||0,independentDomain:Number(contextual.topicFit)||0,sources:['context-shadow']});
++    }
++    const dedup=new Map();
++    for(const row of raw){
++      if(!row?.candidate||!row?.observed)continue;
++      const key=`${abstainUniqueKey(row.observed,row.observedLang||'ko')}|${abstainUniqueKey(row.candidate,row.candidateLang||'en')}`;
++      const prev=dedup.get(key);if(!prev||Number(row.score||0)>Number(prev.score||0))dedup.set(key,{...row});
++    }
++    return [...dedup.values()].sort((a,b)=>Number(b.score||0)-Number(a.score||0)).slice(0,STOOM_ABSTAIN_MAX_CANDIDATES);
++  }
++  function abstainCandidateEvidence(row={},contextual=null,startedAt=performance.now()){
++    if(performance.now()-startedAt>STOOM_ABSTAIN_EVAL_BUDGET_MS)return {blocked:true,reason:'EVAL_BUDGET'};
++    const observed=String(row.observed||''),candidate=String(row.candidate||'');
++    const observedLang=row.observedLang||'ko',candidateLang=row.candidateLang||'en';
++    if(!observed||!candidate)return {blocked:true,reason:'NO_CANDIDATE'};
++    if(abstainUniqueKey(observed,observedLang)===abstainUniqueKey(candidate,candidateLang))return {blocked:true,reason:'NO_DISCRIMINATION'};
++    if(abstainSourceIsTranslationOnly(row.sources))return {blocked:true,reason:'TRANSLATION_DERIVED_ONLY'};
++
++    let stg=null;
++    if(observedLang==='ko'&&candidateLang==='en')stg=structuralTransliterationGuard(observed,candidate,{tailSuffix:row.tailSuffix||''},{recordStats:false});
++    if(stg?.syllables<=2)return {blocked:true,reason:'SHORT_NATIVE_GUARD',stg};
++    if(stg&&(Number(stg.observedCoverage)<.64||Number(stg.candidateCoverage)<.64))return {blocked:true,reason:'LOW_COVERAGE',stg};
++
++    const exactNBest=Number(row.exactNBest)||0,nbest=clampNumber(Number(row.nbest)||0,0,1);
++    const repeatKey=`${candidateLang}|${candidate}|${observed}`;
++    const repeatCount=Number(mixedBridgeSessionVariants?.get?.(repeatKey))||0;
++    const repeatEvidence=clampNumber((repeatCount-1)/2,0,1);
++    const recognition=clampNumber(.78*Math.max(exactNBest>0?1:0,nbest)+.22*repeatEvidence,0,1);
++
++    const stgEvidence=abstainStgEvidence(stg);
++    const personal=Number.isFinite(Number(row.personal))?clampNumber(Number(row.personal),0,1):null;
++    let phonetic=null;
++    if(Number.isFinite(stgEvidence)&&Number.isFinite(personal))phonetic=clampNumber(.65*stgEvidence+.35*personal,0,1);
++    else if(Number.isFinite(stgEvidence))phonetic=Math.min(.90,stgEvidence);
++    else if(Number.isFinite(personal))phonetic=Math.min(.90,personal);
++
++    const independentDomain=clampNumber(Number(row.independentDomain)||0,0,1),domain=clampNumber(Number(row.domain)||0,0,1);
++    const termPrior=Math.max(independentDomain,domain*.72);
++    const context=abstainContextForCandidate(contextual,row);
++    const acoustic=null; // Acoustic HDR은 Lab 검증 단계이며 LIVE runtime에는 아직 연결하지 않음.
++    const signals={acoustic,recognition,phonetic,termPrior,context};
++    const score=abstainWeightedEvidence(signals);
++    const coreStrong=['acoustic','recognition','phonetic'].filter(k=>Number.isFinite(signals[k])&&signals[k]>=.65).length;
++    const independentGroups=['recognition','phonetic','termPrior','context'].filter(k=>Number.isFinite(signals[k])&&signals[k]>=.55).length;
++    return {blocked:false,row,stg,signals,score:Number(score.toFixed(4)),coreStrong,independentGroups};
++  }
++  function evaluateAbstainGateShadow(job={}){
++    const started=performance.now(),diag=traceDiagnosticState?.abstainGate;
++    if(diag)diag.evaluations++;
++    const rows=abstainCandidateRows(job.mixedBridgeShadow,job.contextualReconstructionShadow);
++    if(!rows.length){
++      if(diag)diag.wouldAbstain++;abstainDiagReason('NO_CANDIDATE');
++      traceEvent('diagnostic','abstain_gate.shadow',{version:STOOM_ABSTAIN_GATE_VERSION,mode:STOOM_ABSTAIN_GATE_MODE,decision:'WOULD_ABSTAIN',reason:'NO_CANDIDATE',runtimeMutation:false,criticalPath:false});return;
++    }
++    const uniqueCandidates=new Set(rows.map(r=>abstainUniqueKey(r.candidate,r.candidateLang||'en')).filter(Boolean));
++    if(uniqueCandidates.size<2){
++      if(diag)diag.wouldAbstain++;abstainDiagReason('NO_DISCRIMINATION');
++      traceEvent('diagnostic','abstain_gate.shadow',{version:STOOM_ABSTAIN_GATE_VERSION,mode:STOOM_ABSTAIN_GATE_MODE,decision:'WOULD_ABSTAIN',reason:'NO_DISCRIMINATION',candidateCount:rows.length,uniqueCandidateCount:uniqueCandidates.size,runtimeMutation:false,criticalPath:false});return;
++    }
++
++    const evaluated=[];let budgetHit=false;
++    for(const row of rows){
++      if(performance.now()-started>STOOM_ABSTAIN_EVAL_BUDGET_MS){budgetHit=true;break;}
++      const ev=abstainCandidateEvidence(row,job.contextualReconstructionShadow,started);
++      if(diag)diag.candidateEvaluations++;
++      if(ev.blocked){abstainDiagReason(ev.reason);continue;}
++      evaluated.push(ev);
++    }
++    if(budgetHit){
++      if(diag)diag.wouldAbstain++;abstainDiagReason('EVAL_BUDGET');
++      traceEvent('diagnostic','abstain_gate.shadow',{version:STOOM_ABSTAIN_GATE_VERSION,mode:STOOM_ABSTAIN_GATE_MODE,decision:'WOULD_ABSTAIN',reason:'EVAL_BUDGET',candidateCount:rows.length,evaluatedCount:evaluated.length,budgetMs:STOOM_ABSTAIN_EVAL_BUDGET_MS,runtimeMutation:false,criticalPath:false});
++      return;
++    }
++    if(!evaluated.length){
++      if(diag)diag.wouldAbstain++;abstainDiagReason('NO_CANDIDATE');
++      traceEvent('diagnostic','abstain_gate.shadow',{version:STOOM_ABSTAIN_GATE_VERSION,mode:STOOM_ABSTAIN_GATE_MODE,decision:'WOULD_ABSTAIN',reason:'NO_CANDIDATE',candidateCount:rows.length,runtimeMutation:false,criticalPath:false});return;
++    }
++    evaluated.sort((a,b)=>b.score-a.score);const top=evaluated[0],second=evaluated[1]||null;
++    const margin=second?top.score-second.score:0;
++    const stableTop1=String(job.nbestChoice?.rejectionReason||'').includes('stable-top1')||!!job.confidenceRoute?.skipNBest;
++    const minScore=stableTop1?.86:.78,minMargin=stableTop1?.15:.12;
++    let decision='WOULD_ABSTAIN',reason='LOW_SCORE';
++    if(top.independentGroups<2||top.coreStrong<2){reason='INSUFFICIENT_INDEPENDENCE';}
++    else if(!Number.isFinite(top.signals.phonetic)||top.signals.phonetic<.65){reason='PHONETIC_GUARD';}
++    else if(top.score<minScore){reason=stableTop1?'STABLE_TOP1_GUARD':'LOW_SCORE';decision=stableTop1?'WOULD_KEEP':'WOULD_ABSTAIN';}
++    else if(margin<minMargin){reason='LOW_MARGIN';}
++    else {decision='WOULD_SELECT';reason='STRONG_INDEPENDENT_EVIDENCE';}
++
++    if(diag){
++      if(decision==='WOULD_SELECT')diag.wouldSelect++;else if(decision==='WOULD_KEEP')diag.wouldKeep++;else diag.wouldAbstain++;
++      diag.coreStrongSum+=Number(top.coreStrong)||0;
++    }
++    abstainDiagReason(reason);
++    const elapsed=Math.max(0,performance.now()-started);
++    if(diag){diag.evalMsSum+=elapsed;diag.evalMsCount++;diag.evalMsMax=Math.max(diag.evalMsMax,elapsed);}
++    traceEvent('diagnostic','abstain_gate.shadow',{
++      version:STOOM_ABSTAIN_GATE_VERSION,mode:STOOM_ABSTAIN_GATE_MODE,decision,reason,
++      thresholds:{minScore,minMargin,minPhonetic:.65,minCoreStrong:2,minIndependentGroups:2,lowCoverage:.64},
++      stableTop1,candidateCount:rows.length,evaluatedCount:evaluated.length,margin:Number(margin.toFixed(4)),
++      top:{observed:top.row.observed,candidate:top.row.candidate,candidateLang:top.row.candidateLang||'en',score:top.score,coreStrong:top.coreStrong,independentGroups:top.independentGroups,signals:top.signals,stg:top.stg?{state:top.stg.state,score:top.stg.score,phonetic:top.stg.phonetic,coverage:top.stg.coverage,observedCoverage:top.stg.observedCoverage,candidateCoverage:top.stg.candidateCoverage,run:top.stg.run,hardKeepReason:top.stg.hardKeepReason}:null,sources:top.row.sources||[]},
++      second:second?{candidate:second.row.candidate,score:second.score,signals:second.signals}:null,
++      acousticHdrRuntimeConnected:false,translationDerivedCandidateAllowed:false,runtimeMutation:false,criticalPath:false,evaluationMs:Number(elapsed.toFixed(3))
++    });
++  }
++  function scheduleAbstainGateShadow(job={}){
++    // latest-only observer queue: 진단이 밀려도 실시간 인식/번역보다 우선하지 않습니다.
++    if(abstainShadowJobScheduled&&abstainShadowPendingJob&&traceDiagnosticState?.abstainGate)traceDiagnosticState.abstainGate.deferredDropped++;
++    abstainShadowPendingJob=job;
++    if(abstainShadowJobScheduled)return;
++    abstainShadowJobScheduled=true;
++    const run=()=>{
++      const payload=abstainShadowPendingJob;abstainShadowPendingJob=null;abstainShadowJobScheduled=false;
++      if(!payload)return;
++      try{evaluateAbstainGateShadow(payload);}catch(e){console.warn('ABSTAIN shadow observer bypassed:',e);}
++    };
++    if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:220});
++    else setTimeout(run,24);
++  }
++
+   function applyPersonalSpeechCorrection(raw='', alternatives=[]) {
+     let output=norm(raw);
+     if (!output || !activeVoiceProfile || !voiceCalAutoApply?.checked) return {text:output,count:0};
+@@ -9833,7 +10022,7 @@
+   // 목적: 중복 자막/번역 지연/endpoint 오판을 재현 없이도 분석할 수 있도록
+   // 입력(STT 텍스트), 과정(Main Speaker/버퍼/revision), 연산(번역 queue/latency), 출력(UI/TTS)을 한 timeline에 기록합니다.
+   // 원음/PCM은 기록하지 않으며 서버로 자동 전송하지 않습니다. 로그는 현재 탭 메모리에만 유지되고 사용자가 저장할 때 JSON으로 내려받습니다.
+-  const TRACE_LOG_SCHEMA = 'STOOM-TRACE-1.7';
++  const TRACE_LOG_SCHEMA = 'STOOM-TRACE-1.8';
+   const TRACE_LOG_MAX_EVENTS = 16000;
+   let traceEvents = [];
+   let traceSeq = 0;
+@@ -9852,6 +10041,7 @@
+       shadowOwnership:{enabled:true,evaluations:0,sameUtteranceExtend:0,newUtterance:0,intentionalRepeat:0,ambiguousHold:0,highConfidence:0,midConfidence:0,lowConfidence:0,wouldMerge:0,wouldCreateNew:0,wouldHold:0,actualDecisionMatched:0,actualDecisionDiffered:0},
+       stablePrefix:{holdReasons:{},cancelReasons:{}},
+       interaction:{events:0,duplicateEvidence:0,synergy:0,suppression:0,neutral:0,pairs:{}},
++      abstainGate:{version:'STOOM-ABSTAIN-1.0',mode:'shadow-only',evaluations:0,candidateEvaluations:0,wouldSelect:0,wouldKeep:0,wouldAbstain:0,noCandidate:0,noDiscrimination:0,translationDerivedBlocked:0,shortNativeGuarded:0,lowCoverage:0,insufficientIndependence:0,lowScore:0,lowMargin:0,stableTop1Guarded:0,phoneticGuarded:0,budgetAbstains:0,deferredDropped:0,coreStrongSum:0,evalMsSum:0,evalMsCount:0,evalMsMax:0,reasons:{}},
+       diagnosticOverhead:{traceEventCount:0,traceEventMsSum:0,traceEventMsMax:0,provenanceEvents:0,interactionEvents:0},
+       decisionTraceSummary:{decisions:0,multiEngineDecisions:0,singleEngineDecisions:0,holds:0,conflicts:0,resolvedConflicts:0,unresolvedConflicts:0,shadowAblations:0,shadowChangedOutcome:0}
+     };
+@@ -9976,6 +10166,7 @@
+       shadowOwnership:{...s},
+       decisionTraceSummary:decisionTraceSummarySnapshot(),
+       interactionDiagnostics:{...traceDiagnosticState.interaction,pairs:{...traceDiagnosticState.interaction.pairs}},
++      abstainGate:{...traceDiagnosticState.abstainGate,reasons:{...traceDiagnosticState.abstainGate.reasons},evalMsAvg:traceDiagnosticState.abstainGate.evalMsCount?Number((traceDiagnosticState.abstainGate.evalMsSum/traceDiagnosticState.abstainGate.evalMsCount).toFixed(4)):0},
+       stablePrefixDiagnostics:{holdReasons:{...traceDiagnosticState.stablePrefix.holdReasons},cancelReasons:{...traceDiagnosticState.stablePrefix.cancelReasons}},
+       diagnosticOverhead:{...traceDiagnosticState.diagnosticOverhead,traceEventMsAvg:traceDiagnosticState.diagnosticOverhead.traceEventCount?Number((traceDiagnosticState.diagnosticOverhead.traceEventMsSum/traceDiagnosticState.diagnosticOverhead.traceEventCount).toFixed(4)):0},
+       incrementalPipeline:{...incrementalPerfCounters,normalizeCacheSize:compareNormalizeCache.size,lastInterimRelation:incrementalInterimState?.relation||'',lastStablePrefix:incrementalInterimState?.stablePrefix||'',stablePrefixPreviewCardId:stablePrefixTranslationState?.lastCardId||''}
+@@ -10142,7 +10333,7 @@
+     return {
+       schema:TRACE_LOG_SCHEMA,appVersion:APP_VERSION,sessionId:traceSessionId||null,startedAt:traceStartedAtISO||null,savedAt:new Date().toISOString(),
+       notice:'원음/PCM은 포함하지 않습니다. STT 인식문과 번역문은 오류 분석을 위해 포함됩니다. 엔진 기여·Provenance·Interaction·Shadow·Incremental 진단은 이 로컬 Trace JSON에만 포함되며 진단 heartbeat/Worker/D1 payload에는 추가하지 않습니다.',
+-      diagnosticMeta:{observerOnly:true,decisionSideEffect:false,evaluationMode:'runtime',baselineVersion:'0.9.31',engineDiagnosticsVersion:'2.6',provenanceVersion:'STOOM-PROV-1.0',shadowDiagnosticsEnabled:true,ablationEnabled:false,mixedBridgeMode:'shadow-only',contextualReconstructionMode:'shadow-only',guardedTranslationRescueMode:'active-translation-only',structuralTransliterationGuard:'STOOM-STG-1.0'},
++      diagnosticMeta:{observerOnly:true,decisionSideEffect:false,evaluationMode:'runtime',baselineVersion:'0.9.33',engineDiagnosticsVersion:'2.7',provenanceVersion:'STOOM-PROV-1.0',shadowDiagnosticsEnabled:true,ablationEnabled:false,mixedBridgeMode:'shadow-only',contextualReconstructionMode:'shadow-only',guardedTranslationRescueMode:'active-translation-only',structuralTransliterationGuard:'STOOM-STG-1.0',abstainGate:'STOOM-ABSTAIN-1.0-shadow',acousticHdrRuntimeConnected:false},
+       provenanceRegistry:STOOM_PROVENANCE_REGISTRY,
+       environment:{
+         sourceLang:sourceSelect?.value||'',targets:selectedTargets?.()||[],speedMode,foregroundGuardMode,
+@@ -13455,6 +13646,11 @@
+       localCorrection={text:norm(topicCorrection.text || personalCorrection.text || rawText),count:0,corrections:[],candidatesChecked:0};
+     }
+     const correctedText = norm(localCorrection.text || topicCorrection.text || personalCorrection.text || rawText);
++    scheduleAbstainGateShadow({
++      rawText,originalRawText,alternatives,recognitionMeta,confidenceRoute,nbestChoice,mixedBridgeShadow,contextualReconstructionShadow,
++      // Existing active correction outputs are snapshot context only. ABSTAIN shadow never mutates them.
++      activeCorrectionSnapshot:{termCount:Number(termCorrection.count)||0,personalCount:Number(personalCorrection.count)||0,topicCount:Number(topicCorrection.count)||0,localCount:Number(localCorrection.count)||0,finalCandidate:correctedText}
++    });
+     const questionAdjusted=applyQuestionProsodyPunctuation(correctedText,{stage:'chrome-final'});
+     const text=questionAdjusted.text;
+     traceEvent('process','stt.final.corrected',{raw:rawText,top1:originalRawText,nbestChanged:!!nbestChoice.changed,termText:termCorrection.text,termCount:termCorrection.count,personalText:personalCorrection.text,personalCount:personalCorrection.count,topicText:topicCorrection.text,topicCount:topicCorrection.count,localText:localCorrection.text,localCount:localCorrection.count,localCorrections:localCorrection.corrections,mixedBridgeShadow:mixedBridgeShadow?{candidate:mixedBridgeShadow.candidate,score:mixedBridgeShadow.score,wouldRestore:mixedBridgeShadow.wouldRestore,applied:false}:null,contextualReconstructionShadow:contextualReconstructionShadow?{observed:contextualReconstructionShadow.observed,candidate:contextualReconstructionShadow.candidate,baseScore:contextualReconstructionShadow.score,rerankScore:contextualReconstructionShadow.rerankScore,contextScore:contextualReconstructionShadow.contextScore,margin:contextualReconstructionShadow.margin,evidenceRoots:contextualReconstructionShadow.evidenceRoots,wouldRestore:contextualReconstructionShadow.wouldRestore,applied:false}:null,prosodyQuestion:questionAdjusted.applied,finalText:text});

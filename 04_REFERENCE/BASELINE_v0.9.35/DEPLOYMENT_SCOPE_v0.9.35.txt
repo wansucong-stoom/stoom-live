@@ -1,0 +1,16 @@
+STOOM LIVE TRANSLATOR v0.9.35 ABSTAIN GATE SHADOW CANDIDATE
+
+PRODUCTION STATUS
+- v0.9.33 remains the stable production baseline.
+- v0.9.35 is a candidate for real-microphone regression testing only.
+- Do not promote until the fixed microphone regression set passes 3 consecutive runs.
+
+DEPLOYMENT SCOPE
+- Pages: CHANGE REQUIRED only when testing this candidate. Replace the Pages files in 01_PAGES or deploy the direct-deploy ZIP.
+- Worker: NO CHANGE. Keep Worker v0.10.19.
+- D1: NO CHANGE. No schema migration and no data migration.
+
+RUNTIME SAFETY
+- ABSTAIN Gate is SHADOW-ONLY.
+- No mutation of STT source, translated text, TTS, Endpoint, Main Speaker, Watchdog, or Commit decisions.
+- Acoustic HDR is NOT connected to LIVE runtime in this candidate.

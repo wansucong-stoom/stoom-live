@@ -1,0 +1,6 @@
+STOOM LIVE TRANSLATOR v0.9.37
+
+Worker: 변경 없음
+현재 Worker 운영 기준: v0.10.19 유지
+이번 변경은 Pages 클라이언트의 한국어 문장 경계/문장부호 및 관측 영문 Interim evidence에만 해당합니다.
+Worker 코드/라우트/환경변수/바인딩 변경 없음.

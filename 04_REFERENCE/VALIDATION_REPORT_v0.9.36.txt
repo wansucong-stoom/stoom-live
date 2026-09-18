@@ -1,0 +1,39 @@
+STOOM LIVE TRANSLATOR v0.9.36 VALIDATION REPORT
+
+1. JavaScript syntax
+- PASS (node --check)
+
+2. Recognition Stability regression
+- 13 / 13 PASS
+
+3. STG regression
+- 9 / 9 PASS
+
+4. Protected Runtime Path Freeze
+- 18 / 18 PASS
+- mainSpeakerFinalDisposition / flushSentenceBuffer / continuous boundary / late-final recovery / orphan recovery / confidence routing / N-best core functions unchanged
+- Watchdog + Interim timing constants unchanged
+
+5. Local Candidate Retriever
+- 15 / 15 PASS
+- trusted local source only
+- PPTV/Context free candidate generation blocked
+- Mixed Bridge/Context observer chain disconnected from ABSTAIN candidate source
+- no external LLM endpoint
+
+6. ABSTAIN + trusted local route
+- 10 / 10 PASS
+- normal 2-core rule retained
+- trusted local rescue requires stronger sourceFit/phonetic/score/margin
+- Stable Top-1 cannot use shortcut
+
+7. Source-hint synthetic examples
+- 4 / 4 PASS
+- 프로젝트 페이스트 러닝 → 프로젝트 베이스드 러닝 sourceFit 0.9091
+- 포메이트 프로세스먼트 → 포메이티브 어세스먼트 sourceFit 0.8095
+- 껄떡대리점 → 컨스트럭티비즘 sourceFit 0.3529 => ABSTAIN 기대
+- 비교해 → 브라이트 sourceFit 0.1250 => unrelated reject 기대
+
+주의
+- 위 source-hint 4건은 합성 문자열 단위 테스트이며 실제 마이크 정확도 증명이 아님.
+- v0.9.36은 실제 마이크 8문장 x 3회 회귀가 필요함.

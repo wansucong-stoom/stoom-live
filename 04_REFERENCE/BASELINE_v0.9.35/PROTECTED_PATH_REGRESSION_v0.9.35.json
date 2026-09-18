@@ -1,0 +1,116 @@
+{
+  "suite": "v0.9.33 Protected Runtime Path Freeze",
+  "total": 18,
+  "pass": 18,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "mainSpeakerFinalDisposition",
+      "ok": true,
+      "base": "8acf1e18357f71d74b6b48383644ad3403a235249536d50e189f89dc930397ce",
+      "current": "8acf1e18357f71d74b6b48383644ad3403a235249536d50e189f89dc930397ce"
+    },
+    {
+      "name": "flushSentenceBuffer",
+      "ok": true,
+      "base": "389fdcbe4b2009526a68be5d677896d7d705b80d5a7783921a7fce7645f6b0e2",
+      "current": "389fdcbe4b2009526a68be5d677896d7d705b80d5a7783921a7fce7645f6b0e2"
+    },
+    {
+      "name": "evaluateContinuousSentenceBoundary",
+      "ok": true,
+      "base": "3676b033a53fae3928d1c4440bcc135be894c70a5c66638a6dd6a6e613c404d5",
+      "current": "3676b033a53fae3928d1c4440bcc135be894c70a5c66638a6dd6a6e613c404d5"
+    },
+    {
+      "name": "maybeEnforceContinuousSentenceLatency",
+      "ok": true,
+      "base": "25a79d904428da212d7fb9284164f87613aa38ca0a66311c5fcac7f9aa91126d",
+      "current": "25a79d904428da212d7fb9284164f87613aa38ca0a66311c5fcac7f9aa91126d"
+    },
+    {
+      "name": "attachLateFinalToRecentCard",
+      "ok": true,
+      "base": "3cd174f1134d0bfef454150f11503f4fc19cd3b5191cdb2f13603b66363fc1e1",
+      "current": "3cd174f1134d0bfef454150f11503f4fc19cd3b5191cdb2f13603b66363fc1e1"
+    },
+    {
+      "name": "attachOrphanLateFinal",
+      "ok": true,
+      "base": "91f027b42b1f9de3b9f1d203bcac731fdfa82a8dc32710b14a197516ce5f90e7",
+      "current": "91f027b42b1f9de3b9f1d203bcac731fdfa82a8dc32710b14a197516ce5f90e7"
+    },
+    {
+      "name": "recognitionConfidenceRoute",
+      "ok": true,
+      "base": "5a7a5f9b6e0a935d341a73228aa5756f7bbdaad8eab8f1ed83f5d339323982c8",
+      "current": "5a7a5f9b6e0a935d341a73228aa5756f7bbdaad8eab8f1ed83f5d339323982c8"
+    },
+    {
+      "name": "selectContextualNBest",
+      "ok": true,
+      "base": "4e46c108af59f2f335f5e29dcfc719735ab575778188d24f287f43022e0cbbc9",
+      "current": "4e46c108af59f2f335f5e29dcfc719735ab575778188d24f287f43022e0cbbc9"
+    },
+    {
+      "name": "STT_WATCHDOG_STALL_MS",
+      "ok": true,
+      "base": "4200",
+      "current": "4200"
+    },
+    {
+      "name": "STT_WATCHDOG_INITIAL_STALL_MS",
+      "ok": true,
+      "base": "5200",
+      "current": "5200"
+    },
+    {
+      "name": "STT_WATCHDOG_ACOUSTIC_ONLY_STALL_MS",
+      "ok": true,
+      "base": "8500",
+      "current": "8500"
+    },
+    {
+      "name": "STT_WATCHDOG_MIN_VOICE_FRAMES",
+      "ok": true,
+      "base": "6",
+      "current": "6"
+    },
+    {
+      "name": "STT_WATCHDOG_RECENT_VOICE_MS",
+      "ok": true,
+      "base": "1200",
+      "current": "1200"
+    },
+    {
+      "name": "STT_WATCHDOG_RESTART_COOLDOWN_MS",
+      "ok": true,
+      "base": "5200",
+      "current": "5200"
+    },
+    {
+      "name": "STT_WATCHDOG_START_TIMEOUT_MS",
+      "ok": true,
+      "base": "5000",
+      "current": "5000"
+    },
+    {
+      "name": "INTERIM_ONLY_FINAL_WAIT_MS",
+      "ok": true,
+      "base": "2600",
+      "current": "2600"
+    },
+    {
+      "name": "INTERIM_ONLY_STABLE_WAIT_MS",
+      "ok": true,
+      "base": "1200",
+      "current": "1200"
+    },
+    {
+      "name": "INTERIM_REENTRY_RESUME_MS",
+      "ok": true,
+      "base": "3000",
+      "current": "3000"
+    }
+  ]
+}
