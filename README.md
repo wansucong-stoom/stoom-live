@@ -108,3 +108,5 @@ stoom-live/
 ---
 
 **STOOM LAB** · Small tools, meaningful change.
+
+<!-- Cloudflare deployment trigger: 2026-09-19 -->
